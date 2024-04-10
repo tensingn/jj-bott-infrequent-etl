@@ -1,15 +1,18 @@
 import "dotenv/config";
+import * as ff from "@google-cloud/functions-framework";
 import { Collection, STANDARD } from "@tensingn/firebary";
-import { PlayerModel, TeamModel } from "@tensingn/son-of-botker-models";
+import { PlayerModel } from "@tensingn/son-of-botker-models";
 
-const collection: Collection = new Collection(
-	{
-		projectId: process.env.GCP_PROJECTID,
-		keyFilename: process.env.GCP_KEYFILENAME,
-		ignoreUndefinedProperties: true,
-	},
-	[PlayerModel],
-	"players"
-);
+ff.http("getAllPlayers", (req: ff.Request, res: ff.Response) => {
+	const collection: Collection = new Collection(
+		{
+			projectId: process.env.GCP_PROJECTID,
+			keyFilename: process.env.GCP_KEYFILENAME,
+			ignoreUndefinedProperties: true,
+		},
+		[PlayerModel],
+		"players"
+	);
 
-console.log((await collection.getCollection(STANDARD)).length);
+	collection.getCollection<PlayerModel>(STANDARD).then((col) => res.send(col));
+});
