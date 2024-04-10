@@ -1,0 +1,32 @@
+{
+  "name": "etl",
+  "version": "0.0.1",
+  "description": "ETL for Son of Botker",
+  "type": "module",
+  "main": "index.ts",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1",
+    "build": "tsc",
+    "start": "node dist/index.js"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/tensingn/son-of-botker-etl.git"
+  },
+  "author": "Nick Tensing",
+  "license": "ISC",
+  "bugs": {
+    "url": "https://github.com/tensingn/son-of-botker-etl/issues"
+  },
+  "homepage": "https://github.com/tensingn/son-of-botker-etl#readme",
+  "devDependencies": {
+    "@types/node": "^20.12.3",
+    "typescript": "^5.4.3"
+  },
+  "dependencies": {
+    "@google-cloud/firestore": "^7.6.0",
+    "@tensingn/firebary": "^0.0.1",
+    "@tensingn/son-of-botker-models": "^0.0.4",
+    "dotenv": "^16.4.5"
+  }
+}
