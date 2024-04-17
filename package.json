@@ -5,10 +5,12 @@
   "main": "./dist/index.js",
   "scripts": {
     "build": "tsc",
-    "start": "npm run build && functions-framework --port=8080 --target=getAllPlayers",
+    "start": "npm run build && functions-framework --port=8080 --target=getAllNFLTeams",
     "prestart": "npm run build",
     "gcp-build": "npm run build",
-    "debug": "npm run build && node --inspect node_modules/.bin/functions-framework --port=8080 --target=getAllPlayers"
+    "debug": "npm run build && node --inspect node_modules/.bin/functions-framework --port=8080 --target=getAllNFLTeams",
+    "debugish": "node --inspect dist/index.js",
+    "start:dev": "node dist/index.js"
   },
   "repository": {
     "type": "git",
@@ -27,8 +29,9 @@
   },
   "dependencies": {
     "@google-cloud/firestore": "^7.6.0",
-    "@tensingn/firebary": "^0.0.1",
-    "@tensingn/son-of-botker-models": "^0.0.4",
+    "@tensingn/firebary": "^0.0.4",
+    "@tensingn/son-of-botker-models": "^0.0.8",
+    "@tensingn/son-of-botker-services": "^0.0.8",
     "axios": "^1.6.8",
     "dotenv": "^16.4.5"
   }

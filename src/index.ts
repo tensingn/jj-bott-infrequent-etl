@@ -1,18 +1,27 @@
 import "dotenv/config";
 import * as ff from "@google-cloud/functions-framework";
-import { Collection, STANDARD } from "@tensingn/firebary";
-import { PlayerModel } from "@tensingn/son-of-botker-models";
+import { Extractor } from "./extractor/extractor";
+import { nflTeamTankModelsToNFLTeamModelWithGames } from "./transformer/nfl-team-transformations";
+import { Loader } from "./loader/loader";
 
-ff.http("getAllPlayers", (req: ff.Request, res: ff.Response) => {
-	const collection: Collection = new Collection(
-		{
-			projectId: process.env.GCP_PROJECTID,
-			keyFilename: process.env.GCP_KEYFILENAME,
-			ignoreUndefinedProperties: true,
-		},
-		[PlayerModel],
-		"players"
+ff.http("getAllNFLTeams", async (req: ff.Request, res: ff.Response) => {
+	let extractor = new Extractor(process.env.TANK_KEY!);
+	const { nflTeams, schedules } = await extractor.getAllNFLTeamsAndSchedules(2);
+	console.log("retrieved teams and schedules");
+
+	const nflTeamModels = nflTeamTankModelsToNFLTeamModelWithGames(
+		nflTeams,
+		schedules
 	);
+	console.log("converted to teams");
 
-	collection.getCollection<PlayerModel>(STANDARD).then((col) => res.send(col));
+	try {
+		const loader = new Loader(process.env.DATA_API_URL!);
+		await loader.loadTeams(nflTeamModels);
+
+		res.sendStatus(200);
+	} catch (e) {
+		console.log(e);
+		res.sendStatus(500);
+	}
 });
