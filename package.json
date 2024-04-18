@@ -24,11 +24,11 @@
   },
   "homepage": "https://github.com/tensingn/son-of-botker-etl#readme",
   "devDependencies": {
-    "@google-cloud/functions-framework": "^3.3.0",
     "@types/node": "^20.12.3",
     "typescript": "^5.4.3"
   },
   "dependencies": {
+    "@google-cloud/functions-framework": "^3.3.0",
     "@google-cloud/firestore": "^7.6.0",
     "@tensingn/firebary": "^0.0.4",
     "@tensingn/son-of-botker-models": "^0.0.8",
