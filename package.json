@@ -5,7 +5,8 @@
   "main": "./dist/index.js",
   "scripts": {
     "build": "tsc",
-    "start": "npm run build && functions-framework --port=8080 --target=getAllNFLTeams",
+    "start": "node ./dist/index.js",
+    "start:function-framework": "npm run build && functions-framework --port=8080 --target=getAllNFLTeams",
     "prestart": "npm run build",
     "gcp-build": "npm run build",
     "debug": "npm run build && node --inspect node_modules/.bin/functions-framework --port=8080 --target=getAllNFLTeams",
@@ -23,6 +24,7 @@
   },
   "homepage": "https://github.com/tensingn/son-of-botker-etl#readme",
   "devDependencies": {
+    "@google-cloud/functions-framework": "^3.3.0",
     "@types/node": "^20.12.3",
     "typescript": "^5.4.3"
   },
@@ -32,7 +34,6 @@
     "@tensingn/son-of-botker-models": "^0.0.8",
     "@tensingn/son-of-botker-services": "^0.0.8",
     "axios": "^1.6.8",
-    "dotenv": "^16.4.5",
-    "@google-cloud/functions-framework": "^3.3.0"
+    "dotenv": "^16.4.5"
   }
 }
