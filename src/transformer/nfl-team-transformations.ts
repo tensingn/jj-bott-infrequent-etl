@@ -1,10 +1,10 @@
-import { NFLTeamModel, NFLTeamNames } from "@tensingn/son-of-botker-models";
+import { NFLTeamModel, NFLTeamNames } from "@tensingn/jj-bott-models";
 import {
 	GameTankModel,
 	NFLTeamTankModel,
 	ScheduleTankModel,
-} from "@tensingn/son-of-botker-services";
-import { NFLTeamTankNames } from "@tensingn/son-of-botker-services/cjs/tank/names/nfl-team.tank.names";
+} from "@tensingn/jj-bott-services";
+import { NFLTeamTankNames } from "@tensingn/jj-bott-services/cjs/tank/names/nfl-team.tank.names";
 
 export const nflTeamTankModelToNFLTeamModel = (
 	nflTeamTankModel: NFLTeamTankModel

@@ -1,17 +1,31 @@
 import {
+	NFLTeamModel,
+	NFLTeamNames,
+	PlayerSleeperModel,
+	PositionNames,
+	ScoringSettings,
+} from "@tensingn/jj-bott-models";
+import {
+	DSTTankModel,
+	DSTTeamTankModel,
+	DataAPIService,
+	GameTankModel,
 	NFLTeamTankModel,
 	ScheduleTankModel,
 	SleeperService,
 	TankService,
-} from "@tensingn/son-of-botker-services";
+} from "@tensingn/jj-bott-services";
+import { PlayerTankModel } from "@tensingn/jj-bott-services/cjs/tank/models/player.tank.model";
 
 export class Extractor {
-	private tankService: TankService;
-	private sleeperService: SleeperService;
+	private readonly tankService: TankService;
+	private readonly sleeperService: SleeperService;
+	private readonly dataAPI: DataAPIService;
 
-	constructor(tankKey: string) {
+	constructor(tankKey: string, dataAPIURL: string) {
 		this.tankService = new TankService(tankKey);
 		this.sleeperService = new SleeperService();
+		this.dataAPI = new DataAPIService(dataAPIURL);
 	}
 
 	async getAllNFLTeamsAndSchedules(yearsBack: number): Promise<{
@@ -37,6 +51,86 @@ export class Extractor {
 		}
 
 		return { nflTeams, schedules };
+	}
+
+	async getAllPlayers(
+		positions: Array<PositionNames>,
+		getStats: boolean = false
+	): Promise<
+		Array<{
+			sleeperPlayer: PlayerSleeperModel;
+			tankPlayer: PlayerTankModel | null;
+		}>
+	> {
+		const sleeperPlayersResponse = await this.sleeperService.getAllPlayers();
+		const sleeperPlayers = Object.values(sleeperPlayersResponse);
+
+		const filteredSleeperPlayers = sleeperPlayers.filter(
+			(sp) =>
+				sp.team &&
+				sp.status !== "Inactive" &&
+				sp.espn_id &&
+				sp.fantasy_positions?.some((fp) => positions.includes(fp))
+		);
+
+		return await Promise.all(
+			filteredSleeperPlayers.map(async (sp) => {
+				const player: {
+					sleeperPlayer: PlayerSleeperModel;
+					tankPlayer: PlayerTankModel | null;
+				} = {
+					sleeperPlayer: sp,
+					tankPlayer: null,
+				};
+
+				try {
+					player.tankPlayer = await this.tankService.getPlayerInformation(
+						sp.espn_id,
+						getStats
+					);
+				} catch (err) {
+					console.log(err);
+				}
+
+				return player;
+			})
+		);
+	}
+
+	async getDSTGamesForEachNFLTeam(): Promise<{
+		nflTeamModels: Array<NFLTeamModel>;
+		gameMap: Map<NFLTeamNames, Array<GameTankModel>>;
+	}> {
+		const gameMap = new Map<NFLTeamNames, Array<GameTankModel>>();
+
+		await this.dataAPI.init();
+		const nflTeamModels = await this.dataAPI.findMany<NFLTeamModel>(
+			"nflTeams",
+			undefined,
+			32
+		);
+
+		for (const nflTeam of nflTeamModels) {
+			const gamesArray = await Promise.all(
+				nflTeam.gameIDs.map((gameID) => {
+					return this.getGame(gameID);
+				})
+			);
+
+			gameMap.set(nflTeam.teamName, gamesArray);
+		}
+
+		return {
+			nflTeamModels,
+			gameMap,
+		};
+	}
+
+	getGame(gameID: string) {
+		return this.tankService.getNFLBoxScore({
+			gameID,
+			fantasyPoints: false,
+		});
 	}
 
 	private async getAllNFLTeams(): Promise<Array<NFLTeamTankModel>> {
