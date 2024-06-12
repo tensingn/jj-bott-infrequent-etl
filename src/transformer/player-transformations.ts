@@ -167,3 +167,56 @@ export const dstMapToPlayerModelAndPlayerGamesMap = (
 
 	return map;
 };
+
+export const gamesAndPlayerModelsToPlayerGamesMap = (
+	games: Array<GameTankModel>,
+	playerModels: Array<PlayerModel>,
+	nflTeams: Array<NFLTeamModel>
+): Map<string, Array<PlayerGameModel>> => {
+	// get rid of duplicates
+	const gamesNoDuplicates = new Array<GameTankModel>();
+	games.forEach((game) => {
+		if (!gamesNoDuplicates.find((g) => g.gameID === game.gameID)) {
+			gamesNoDuplicates.push(game);
+		}
+	});
+
+	const playerGamesMap = new Map<string, Array<PlayerGameModel>>();
+	gamesNoDuplicates.forEach((game) => {
+		const playerGames: Array<PlayerGameTankModel> = Object.values(
+			game.playerStats
+		);
+
+		for (let playerGame of playerGames) {
+			const player = playerModels.find((p) => p.tankID === playerGame.playerID);
+			if (!player) {
+				continue;
+			}
+
+			const playerGameModel = new PlayerGameModel();
+			playerGameModel.playerID = player.id;
+			playerGameModel.gameID = game.gameID;
+			playerGameModel.opponent =
+				game.teamIDHome === playerGame.teamID
+					? nflTeams.find((t) => t.id === game.teamIDAway)!.teamName
+					: nflTeams.find((t) => t.id === game.teamIDHome)!.teamName;
+			playerGameModel.points = playerGame.fantasyPointsDefault?.halfPPR ?? 0;
+
+			playerGameModel.stats = {
+				Passing: playerGame.Passing,
+				Rushing: playerGame.Rushing,
+				Receiving: playerGame.Receiving,
+				Defense: playerGame.Defense,
+				Kicking: playerGame.Kicking,
+			};
+
+			if (playerGamesMap.has(player.id)) {
+				playerGamesMap.get(player.id)?.push(playerGameModel);
+			} else {
+				playerGamesMap.set(player.id, [playerGameModel]);
+			}
+		}
+	});
+
+	return playerGamesMap;
+};

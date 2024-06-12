@@ -5,6 +5,7 @@ import { Loader } from "./loader/loader";
 import { PositionNamesArray } from "@tensingn/jj-bott-models";
 import {
 	dstMapToPlayerModelAndPlayerGamesMap,
+	gamesAndPlayerModelsToPlayerGamesMap,
 	nflTeamModelsAndGameMapToPlayerModelAndPlayerGameMap,
 	nflTeamToDSTPlayerModels,
 	sleeperAndTankPlayerModelsToPlayerModels,
@@ -95,6 +96,37 @@ async function getAllDefenseGames() {
 		);
 	const playerIDAndPlayerGamesMap =
 		dstMapToPlayerModelAndPlayerGamesMap(nflTeamModelGameMap);
+
+	// load
+	try {
+		const loader = new Loader(process.env.DATA_API_URL!);
+		await loader.loadPlayerGamesForMultiplePlayers(playerIDAndPlayerGamesMap);
+		console.log("done");
+	} catch (e) {
+		console.log("error:");
+		console.log(e);
+	}
+}
+
+// TODO
+async function getAllPlayerGames() {
+	// extract
+	const extractor = new Extractor(
+		process.env.TANK_KEY!,
+		process.env.DATA_API_URL!
+	);
+	const nflTeamModelsAndGameMap = await extractor.getDSTGamesForEachNFLTeam(
+		true
+	);
+	const playerModels = await extractor.getAllPlayerModels();
+
+	// transform
+	const games = Array.from(nflTeamModelsAndGameMap.gameMap.values()).flat();
+	const playerIDAndPlayerGamesMap = gamesAndPlayerModelsToPlayerGamesMap(
+		games,
+		playerModels,
+		nflTeamModelsAndGameMap.nflTeamModels
+	);
 
 	// load
 	try {

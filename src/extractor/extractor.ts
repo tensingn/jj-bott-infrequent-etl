@@ -1,6 +1,7 @@
 import {
 	NFLTeamModel,
 	NFLTeamNames,
+	PlayerModel,
 	PlayerSleeperModel,
 	PositionNames,
 	ScoringSettings,
@@ -97,7 +98,9 @@ export class Extractor {
 		);
 	}
 
-	async getDSTGamesForEachNFLTeam(): Promise<{
+	async getDSTGamesForEachNFLTeam(
+		includeFantasyPoints: boolean = false
+	): Promise<{
 		nflTeamModels: Array<NFLTeamModel>;
 		gameMap: Map<NFLTeamNames, Array<GameTankModel>>;
 	}> {
@@ -113,7 +116,7 @@ export class Extractor {
 		for (const nflTeam of nflTeamModels) {
 			const gamesArray = await Promise.all(
 				nflTeam.gameIDs.map((gameID) => {
-					return this.getGame(gameID);
+					return this.getGame(gameID, includeFantasyPoints);
 				})
 			);
 
@@ -126,10 +129,15 @@ export class Extractor {
 		};
 	}
 
-	getGame(gameID: string) {
+	async getAllPlayerModels(): Promise<Array<PlayerModel>> {
+		await this.dataAPI.init();
+		return this.dataAPI.findMany("players", undefined, 1000);
+	}
+
+	getGame(gameID: string, includeFantasyPoints: boolean = false) {
 		return this.tankService.getNFLBoxScore({
 			gameID,
-			fantasyPoints: false,
+			fantasyPoints: includeFantasyPoints,
 		});
 	}
 
