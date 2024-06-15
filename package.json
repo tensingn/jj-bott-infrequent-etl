@@ -1,39 +1,34 @@
 {
-  "name": "etl",
-  "version": "0.0.1",
-  "description": "ETL for Son of Botker",
-  "main": "./dist/index.js",
-  "scripts": {
-    "build": "tsc",
-    "start": "node ./dist/index.js",
-    "start:function-framework": "npm run build && functions-framework --port=8080 --target=getAllNFLTeams",
-    "prestart": "npm run build",
-    "gcp-build": "npm run build",
-    "debug": "npm run build && node --inspect node_modules/.bin/functions-framework --port=8080 --target=getAllNFLTeams",
-    "debugish": "node --inspect dist/index.js",
-    "start:dev": "node dist/index.js"
-  },
-  "repository": {
-    "type": "git",
-    "url": "git+https://github.com/tensingn/son-of-botker-etl.git"
-  },
-  "author": "Nick Tensing",
-  "license": "ISC",
-  "bugs": {
-    "url": "https://github.com/tensingn/son-of-botker-etl/issues"
-  },
-  "homepage": "https://github.com/tensingn/son-of-botker-etl#readme",
-  "devDependencies": {
-    "@types/node": "^20.12.3",
-    "typescript": "^5.4.3"
-  },
-  "dependencies": {
-    "@google-cloud/functions-framework": "^3.3.0",
-    "@google-cloud/firestore": "^7.6.0",
-    "@tensingn/firebary": "^0.0.4",
-    "@tensingn/son-of-botker-models": "^0.0.8",
-    "@tensingn/son-of-botker-services": "^0.0.8",
-    "axios": "^1.6.8",
-    "dotenv": "^16.4.5"
-  }
+	"name": "etl",
+	"version": "0.0.1",
+	"description": "ETL for jj bott",
+	"main": "./dist/index.js",
+	"scripts": {
+		"build": "tsc",
+		"start": "node ./dist/index.js",
+		"debug": "node --inspect dist/index.js",
+		"start:dev": "node dist/index.js"
+	},
+	"repository": {
+		"type": "git",
+		"url": "git+https://github.com/tensingn/jj-bott-etl.git"
+	},
+	"author": "Nick Tensing",
+	"license": "ISC",
+	"bugs": {
+		"url": "https://github.com/tensingn/jj-bott-etl/issues"
+	},
+	"homepage": "https://github.com/tensingn/jj-bott-etl#readme",
+	"devDependencies": {
+		"@types/node": "^20.12.3",
+		"typescript": "^5.4.3"
+	},
+	"dependencies": {
+		"@google-cloud/firestore": "^7.6.0",
+		"@tensingn/firebary": "^0.0.4",
+		"@tensingn/jj-bott-services": "^0.0.23",
+		"@tensingn/jj-bott-models": "^0.0.19",
+		"axios": "^1.6.8",
+		"dotenv": "^16.4.5"
+	}
 }
