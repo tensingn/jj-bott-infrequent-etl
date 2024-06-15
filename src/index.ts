@@ -10,6 +10,7 @@ import {
 	nflTeamToDSTPlayerModels,
 	sleeperAndTankPlayerModelsToPlayerModels,
 } from "./transformer/player-transformations";
+import { playerModelsAndPlayerGameModelsToLinRegData } from "./transformer/linear-regression-transformations";
 
 async function getAllNFLTeams() {
 	const extractor = new Extractor(
@@ -108,7 +109,6 @@ async function getAllDefenseGames() {
 	}
 }
 
-// TODO
 async function getAllPlayerGames() {
 	// extract
 	const extractor = new Extractor(
@@ -118,7 +118,14 @@ async function getAllPlayerGames() {
 	const nflTeamModelsAndGameMap = await extractor.getDSTGamesForEachNFLTeam(
 		true
 	);
-	const playerModels = await extractor.getAllPlayerModels();
+	const playerModels = await extractor.getAllPlayerModels(1000, [
+		"QB",
+		"RB",
+		"FB",
+		"WR",
+		"TE",
+		"K",
+	]);
 
 	// transform
 	const games = Array.from(nflTeamModelsAndGameMap.gameMap.values()).flat();
@@ -139,4 +146,24 @@ async function getAllPlayerGames() {
 	}
 }
 
-getAllDefenseGames().then(() => {});
+async function exportDataForLinearRegression() {
+	// extract
+	const extractor = new Extractor(
+		process.env.TANK_KEY!,
+		process.env.DATA_API_URL_LOCAL!
+	);
+	const playerModels = await extractor.getAllPlayerModels();
+	const playerGameModels = await extractor.getAllPlayerGameModels();
+
+	// transform - into matrix of parameters
+	const linRegData = playerModelsAndPlayerGameModelsToLinRegData(
+		playerModels,
+		playerGameModels
+	);
+
+	// load - into file
+	const loader = new Loader(process.env.DATA_API_URL!);
+	loader.writeObjToFile("../../training/data/lin-reg-data.json", linRegData);
+}
+
+exportDataForLinearRegression().then(() => {});

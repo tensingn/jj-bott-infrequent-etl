@@ -1,8 +1,8 @@
+import * as fs from "node:fs";
 import {
 	NFLTeamModel,
 	PlayerGameModel,
 	PlayerModel,
-	TeamModel,
 } from "@tensingn/jj-bott-models";
 import { DataAPIService } from "@tensingn/jj-bott-services";
 
@@ -56,5 +56,15 @@ export class Loader {
 	async test() {
 		await this.dataAPI.init();
 		return this.dataAPI.findMany<NFLTeamModel>("nflTeams");
+	}
+
+	async writeObjToFile(fileName: string, obj: Object) {
+		fs.writeFile(fileName, JSON.stringify(obj), "utf8", (err) => {
+			if (err) {
+				throw err;
+			} else {
+				console.log("written to " + fileName);
+			}
+		});
 	}
 }

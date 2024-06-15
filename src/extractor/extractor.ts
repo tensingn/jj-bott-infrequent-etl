@@ -1,14 +1,15 @@
+import * as fs from "node:fs";
 import {
 	NFLTeamModel,
 	NFLTeamNames,
+	NFLTeamNamesArray,
+	PlayerGameModel,
 	PlayerModel,
 	PlayerSleeperModel,
 	PositionNames,
-	ScoringSettings,
+	PositionNamesArray,
 } from "@tensingn/jj-bott-models";
 import {
-	DSTTankModel,
-	DSTTeamTankModel,
 	DataAPIService,
 	GameTankModel,
 	NFLTeamTankModel,
@@ -106,12 +107,7 @@ export class Extractor {
 	}> {
 		const gameMap = new Map<NFLTeamNames, Array<GameTankModel>>();
 
-		await this.dataAPI.init();
-		const nflTeamModels = await this.dataAPI.findMany<NFLTeamModel>(
-			"nflTeams",
-			undefined,
-			32
-		);
+		const nflTeamModels = await this.getAllNFLTeamModels();
 
 		for (const nflTeam of nflTeamModels) {
 			const gamesArray = await Promise.all(
@@ -129,9 +125,21 @@ export class Extractor {
 		};
 	}
 
-	async getAllPlayerModels(): Promise<Array<PlayerModel>> {
+	async getAllPlayerModels(
+		limit: number = 10000,
+		positions: Array<PositionNames> = [...PositionNamesArray]
+	): Promise<Array<PlayerModel>> {
 		await this.dataAPI.init();
-		return this.dataAPI.findMany("players", undefined, 1000);
+		return this.dataAPI.performAction<Array<PlayerModel>>(
+			"players",
+			null,
+			null,
+			"search",
+			{
+				limit,
+				positions,
+			}
+		);
 	}
 
 	getGame(gameID: string, includeFantasyPoints: boolean = false) {
@@ -139,6 +147,64 @@ export class Extractor {
 			gameID,
 			fantasyPoints: includeFantasyPoints,
 		});
+	}
+
+	async searchPlayerGameModels(
+		nflTeams: Array<NFLTeamNames>,
+		playerIDs: Array<string>
+	): Promise<Array<PlayerGameModel>> {
+		await this.dataAPI.init();
+		return this.dataAPI.performAction(
+			"players",
+			null,
+			"playerGames",
+			"search",
+			{
+				nflTeams,
+				playerIDs,
+			}
+		);
+	}
+
+	async getAllNFLTeamModels(): Promise<Array<NFLTeamModel>> {
+		await this.dataAPI.init();
+		return this.dataAPI.findMany("nflTeams", undefined, 32);
+	}
+
+	async getAllPlayerGameModels(): Promise<Array<PlayerGameModel>> {
+		const playerModels = await this.getAllPlayerModels(1000, [
+			"QB",
+			"RB",
+			"FB",
+			"WR",
+			"TE",
+			"K",
+		]);
+
+		const playerGameModelsPromises = [
+			this.searchPlayerGameModels([...NFLTeamNamesArray], []),
+		];
+
+		const chunkSize = 100;
+		for (let i = 0; i < playerModels.length; i += chunkSize) {
+			playerGameModelsPromises.push(
+				this.searchPlayerGameModels(
+					[],
+					playerModels.slice(i, i + chunkSize).map((player) => player.id)
+				)
+			);
+		}
+
+		const playerPlayerGameModels = (
+			await Promise.all(playerGameModelsPromises)
+		).flat();
+
+		return playerPlayerGameModels;
+	}
+
+	readObjFromFile<T>(fileName: string): T {
+		const data = fs.readFileSync(fileName, "utf8");
+		return JSON.parse(data) as T;
 	}
 
 	private async getAllNFLTeams(): Promise<Array<NFLTeamTankModel>> {
