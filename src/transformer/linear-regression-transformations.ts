@@ -47,20 +47,20 @@ export const playerModelsAndPlayerGameModelsToLinRegData = (
 			playerModel: PlayerModel
 		) => {
 			playerPlayerGameModels.forEach((game, index) => {
-				// pos, avg ppg this season, avg ppg last season, opp avg ppg this season
-				const features = new Array<string>(4);
+				// pos, avg ppg this season, avg ppg last season, opp avg ppg this season, actual pts
+				const values = new Array<string>(5);
 
 				// pos
-				features[0] = determinePrimaryPositionInGame(playerModel, game);
+				values[0] = determinePrimaryPositionInGame(playerModel, game);
 
 				// avg ppg this season
-				features[1] = determineAveragePointsPerGameThisSeason(
+				values[1] = determineAveragePointsPerGameThisSeason(
 					game,
 					playerPlayerGameModels
 				);
 
 				// avg ppg last season
-				features[2] = determineAveragePointsPerGameLastSeason(
+				values[2] = determineAveragePointsPerGameLastSeason(
 					game,
 					playerPlayerGameModels
 				);
@@ -73,13 +73,16 @@ export const playerModelsAndPlayerGameModelsToLinRegData = (
 				} else {
 					const opponentGames =
 						playerModelAndPlayerGamesMap.get(opponent) ?? [];
-					features[3] = determineAveragePointsPerGameThisSeason(
+					values[3] = determineAveragePointsPerGameThisSeason(
 						game,
 						opponentGames
 					);
 				}
 
-				linRegData.push(features);
+				// actual score
+				values[4] = game.points;
+
+				linRegData.push(values);
 			});
 		}
 	);
