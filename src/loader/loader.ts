@@ -1,4 +1,5 @@
 import {
+	NFLGameModel,
 	NFLTeamModel,
 	PlayerGameModel,
 	PlayerModel,
@@ -53,8 +54,8 @@ export class Loader {
 		);
 	}
 
-	async test() {
+	async loadGames(games: Array<NFLGameModel>) {
 		await this.dataAPI.init();
-		return this.dataAPI.findMany<NFLTeamModel>("nflTeams");
+		await this.dataAPI.bulkCreate("nflGames", games);
 	}
 }

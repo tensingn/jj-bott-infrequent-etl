@@ -2,7 +2,11 @@ import "dotenv/config";
 import { Extractor } from "./extractor/extractor";
 import { nflTeamTankModelsToNFLTeamModelWithGames } from "./transformer/nfl-team-transformations";
 import { Loader } from "./loader/loader";
-import { PositionNamesArray } from "@tensingn/jj-bott-models";
+import {
+	PlayerGameModel,
+	PlayerModel,
+	PositionNamesArray,
+} from "@tensingn/jj-bott-models";
 import {
 	dstMapToPlayerModelAndPlayerGamesMap,
 	gamesAndPlayerModelsToPlayerGamesMap,
@@ -10,6 +14,8 @@ import {
 	nflTeamToDSTPlayerModels,
 	sleeperAndTankPlayerModelsToPlayerModels,
 } from "./transformer/player-transformations";
+import { playerModelsAndPlayerGameModelsToLinRegData } from "./transformer/linear-regression-transformations";
+import { tankGamesAndNFLTeamsToGameModels } from "./transformer/game-transformations";
 
 async function getAllNFLTeams() {
 	const extractor = new Extractor(
@@ -139,4 +145,56 @@ async function getAllPlayerGames() {
 	}
 }
 
-getAllDefenseGames().then(() => {});
+async function exportDataForLinearRegression() {
+	// extract
+	const extractor = new Extractor(
+		process.env.TANK_KEY!,
+		process.env.DATA_API_URL_LOCAL!
+	);
+	//const playerModels = await extractor.getAllPlayerModels();
+	//const playerGameModels = await extractor.getAllPlayerGameModels();
+	const playerModels = extractor.readObjFromFile<Array<PlayerModel>>(
+		"output/playerModels.json"
+	);
+	const playerGameModels = extractor.readObjFromFile<Array<PlayerGameModel>>(
+		"output/playerGameModels.json"
+	);
+
+	// transform - into matrix of parameters
+	const linRegData = playerModelsAndPlayerGameModelsToLinRegData(
+		playerModels,
+		playerGameModels
+	);
+
+	// load - into file
+	const loader = new Loader(process.env.DATA_API_URL!);
+	loader.writeObjToFile(
+		"../../training/data/lin-reg-data-last5.json",
+		linRegData
+	);
+}
+
+async function getAllGames() {
+	// extract
+	const extractor = new Extractor(
+		process.env.TANK_KEY!,
+		process.env.DATA_API_URL_LOCAL!
+	);
+	const gamesWithWeek = await extractor.getAllNFLGamesWithWeek();
+	const nflTeams = await extractor.getAllNFLTeamModels();
+
+	// transform
+	const gameModels = tankGamesAndNFLTeamsToGameModels(gamesWithWeek, nflTeams);
+
+	// load
+	try {
+		const loader = new Loader(process.env.DATA_API_URL_LOCAL!);
+		await loader.loadGames(gameModels);
+		console.log("done");
+	} catch (e) {
+		console.log("error:");
+		console.log(e);
+	}
+}
+
+getAllGames().then(() => {});
