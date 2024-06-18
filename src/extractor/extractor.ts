@@ -1,9 +1,13 @@
+import * as fs from "node:fs";
 import {
 	NFLTeamModel,
 	NFLTeamNames,
+	NFLTeamNamesArray,
+	PlayerGameModel,
 	PlayerModel,
 	PlayerSleeperModel,
 	PositionNames,
+	PositionNamesArray,
 	ScoringSettings,
 } from "@tensingn/jj-bott-models";
 import {
@@ -130,9 +134,21 @@ export class Extractor {
 		};
 	}
 
-	async getAllPlayerModels(): Promise<Array<PlayerModel>> {
+	async getAllPlayerModels(
+		limit: number = 10000,
+		positions: Array<PositionNames> = [...PositionNamesArray]
+	): Promise<Array<PlayerModel>> {
 		await this.dataAPI.init();
-		return this.dataAPI.findMany("players", undefined, 1000);
+		return this.dataAPI.performAction<Array<PlayerModel>>(
+			"players",
+			null,
+			null,
+			"search",
+			{
+				limit,
+				positions,
+			}
+		);
 	}
 
 	getGame(gameID: string, includeFantasyPoints: boolean = false) {

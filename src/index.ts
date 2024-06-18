@@ -14,7 +14,6 @@ import {
 	nflTeamToDSTPlayerModels,
 	sleeperAndTankPlayerModelsToPlayerModels,
 } from "./transformer/player-transformations";
-import { playerModelsAndPlayerGameModelsToLinRegData } from "./transformer/linear-regression-transformations";
 import { tankGamesAndNFLTeamsToGameModels } from "./transformer/game-transformations";
 
 async function getAllNFLTeams() {
@@ -143,35 +142,6 @@ async function getAllPlayerGames() {
 		console.log("error:");
 		console.log(e);
 	}
-}
-
-async function exportDataForLinearRegression() {
-	// extract
-	const extractor = new Extractor(
-		process.env.TANK_KEY!,
-		process.env.DATA_API_URL_LOCAL!
-	);
-	//const playerModels = await extractor.getAllPlayerModels();
-	//const playerGameModels = await extractor.getAllPlayerGameModels();
-	const playerModels = extractor.readObjFromFile<Array<PlayerModel>>(
-		"output/playerModels.json"
-	);
-	const playerGameModels = extractor.readObjFromFile<Array<PlayerGameModel>>(
-		"output/playerGameModels.json"
-	);
-
-	// transform - into matrix of parameters
-	const linRegData = playerModelsAndPlayerGameModelsToLinRegData(
-		playerModels,
-		playerGameModels
-	);
-
-	// load - into file
-	const loader = new Loader(process.env.DATA_API_URL!);
-	loader.writeObjToFile(
-		"../../training/data/lin-reg-data-last5.json",
-		linRegData
-	);
 }
 
 async function getAllGames() {
