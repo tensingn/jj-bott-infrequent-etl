@@ -14,7 +14,10 @@ import {
 	nflTeamToDSTPlayerModels,
 	sleeperAndTankPlayerModelsToPlayerModels,
 } from "./transformer/player-transformations";
-import { tankGamesAndNFLTeamsToGameModels } from "./transformer/game-transformations";
+import {
+	addingTeamWeekAndSeasonToPlayerGames,
+	tankGamesAndNFLTeamsToGameModels,
+} from "./transformer/game-transformations";
 
 async function getAllNFLTeams() {
 	const extractor = new Extractor(
@@ -113,7 +116,6 @@ async function getAllDefenseGames() {
 	}
 }
 
-// TODO
 async function getAllPlayerGames() {
 	// extract
 	const extractor = new Extractor(
@@ -167,4 +169,30 @@ async function getAllGames() {
 	}
 }
 
-getAllGames().then(() => {});
+async function updatePlayerGamesWithWeek() {
+	// extract
+	const extractor = new Extractor(
+		process.env.TANK_KEY!,
+		process.env.DATA_API_URL_LOCAL!
+	);
+	const playerGames = await extractor.getAllPlayerGameModels();
+	const gameModels = await extractor.getAllGameModels();
+
+	// transform
+	const updatedPlayerGames = addingTeamWeekAndSeasonToPlayerGames(
+		playerGames,
+		gameModels
+	);
+
+	// load
+	try {
+		const loader = new Loader(process.env.DATA_API_URL_LOCAL!);
+		await loader.updatePlayerGames(updatedPlayerGames);
+		console.log("done");
+	} catch (e) {
+		console.log("error:");
+		console.log(e);
+	}
+}
+
+updatePlayerGamesWithWeek().then(() => {});

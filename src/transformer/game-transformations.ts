@@ -1,4 +1,8 @@
-import { NFLGameModel, NFLTeamModel } from "@tensingn/jj-bott-models";
+import {
+	NFLGameModel,
+	NFLTeamModel,
+	PlayerGameModel,
+} from "@tensingn/jj-bott-models";
 import { GameTankModel } from "@tensingn/jj-bott-services";
 
 export const tankGamesAndNFLTeamsToGameModels = (
@@ -18,4 +22,20 @@ export const tankGamesAndNFLTeamsToGameModels = (
 				: game.gameWeek,
 		};
 	});
+};
+
+export const addingTeamWeekAndSeasonToPlayerGames = (
+	playerGames: Array<PlayerGameModel>,
+	gameModels: Array<NFLGameModel>
+): Array<PlayerGameModel> => {
+	playerGames.forEach((playerGame, index, arr) => {
+		const game = gameModels.find((game) => game.id === playerGame.gameID)!;
+		const homeTeam = game.homeTeamName;
+		const awayTeam = game.awayTeamName;
+		arr[index].team = homeTeam === playerGame.opponent ? awayTeam : homeTeam;
+		arr[index].week = game.week;
+		arr[index].season = game.season;
+	});
+
+	return playerGames;
 };

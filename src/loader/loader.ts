@@ -54,6 +54,24 @@ export class Loader {
 		);
 	}
 
+	async updatePlayerGames(playerGames: Array<PlayerGameModel>) {
+		await this.dataAPI.init();
+		const promises = new Array<Promise<void>>();
+
+		for (let i = 0; i < playerGames.length; i += 500) {
+			promises.push(
+				this.dataAPI.bulkUpdateSubEntity(
+					"players",
+					null,
+					"playerGames",
+					playerGames.slice(i, i + 499)
+				)
+			);
+		}
+
+		await Promise.all(promises);
+	}
+
 	async loadGames(games: Array<NFLGameModel>) {
 		await this.dataAPI.init();
 		await this.dataAPI.bulkCreate("nflGames", games);

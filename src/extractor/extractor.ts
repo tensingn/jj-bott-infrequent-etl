@@ -1,5 +1,6 @@
 import * as fs from "node:fs";
 import {
+	NFLGameModel,
 	NFLTeamModel,
 	NFLTeamNames,
 	NFLTeamNamesArray,
@@ -247,6 +248,11 @@ export class Extractor {
 		);
 
 		return allTankGames;
+	}
+
+	async getAllGameModels(): Promise<Array<NFLGameModel>> {
+		await this.dataAPI.init();
+		return this.dataAPI.findMany("nflGames", undefined, 1000000);
 	}
 
 	private async getAllNFLTeams(): Promise<Array<NFLTeamTankModel>> {
