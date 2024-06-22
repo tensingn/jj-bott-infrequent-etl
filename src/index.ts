@@ -2,7 +2,7 @@ import "dotenv/config";
 import { Extractor } from "./extractor/extractor";
 import { nflTeamTankModelsToNFLTeamModelWithGames } from "./transformer/nfl-team-transformations";
 import { Loader } from "./loader/loader";
-import { PositionNamesArray } from "@tensingn/jj-bott-models";
+import { NFLTeamNamesArray, PlayerGameModel, PlayerModel, PositionNamesArray } from "@tensingn/jj-bott-models";
 import {
 	dstMapToPlayerModelAndPlayerGamesMap,
 	gamesAndPlayerModelsToPlayerGamesMap,
@@ -13,17 +13,11 @@ import {
 import { playerModelsAndPlayerGameModelsToLinRegData } from "./transformer/linear-regression-transformations";
 
 async function getAllNFLTeams() {
-	const extractor = new Extractor(
-		process.env.TANK_KEY!,
-		process.env.DATA_API_URL!
-	);
+	const extractor = new Extractor(process.env.TANK_KEY!, process.env.DATA_API_URL!);
 	const { nflTeams, schedules } = await extractor.getAllNFLTeamsAndSchedules(2);
 	console.log("retrieved teams and schedules");
 
-	const nflTeamModels = nflTeamTankModelsToNFLTeamModelWithGames(
-		nflTeams,
-		schedules
-	);
+	const nflTeamModels = nflTeamTankModelsToNFLTeamModelWithGames(nflTeams, schedules);
 	console.log("converted to teams");
 
 	try {
@@ -37,18 +31,13 @@ async function getAllNFLTeams() {
 }
 
 async function getAllPlayers() {
-	const extractor = new Extractor(
-		process.env.TANK_KEY!,
-		process.env.DATA_API_URL!
-	);
+	const extractor = new Extractor(process.env.TANK_KEY!, process.env.DATA_API_URL!);
 	const sleeperAndTankPlayers = await extractor.getAllPlayers(
 		PositionNamesArray.map((p) => p),
 		true
 	);
 
-	const playerModels = sleeperAndTankPlayerModelsToPlayerModels(
-		sleeperAndTankPlayers
-	);
+	const playerModels = sleeperAndTankPlayerModelsToPlayerModels(sleeperAndTankPlayers);
 
 	try {
 		const loader = new Loader(process.env.DATA_API_URL!);
@@ -61,16 +50,11 @@ async function getAllPlayers() {
 }
 
 async function getAllDefenses() {
-	const extractor = new Extractor(
-		process.env.TANK_KEY!,
-		process.env.DATA_API_URL!
-	);
+	const extractor = new Extractor(process.env.TANK_KEY!, process.env.DATA_API_URL!);
 
 	let nflTeamModelsAndGameMap = await extractor.getDSTGamesForEachNFLTeam();
 
-	const dstPlayers = nflTeamToDSTPlayerModels(
-		nflTeamModelsAndGameMap.nflTeamModels
-	);
+	const dstPlayers = nflTeamToDSTPlayerModels(nflTeamModelsAndGameMap.nflTeamModels);
 
 	try {
 		const loader = new Loader(process.env.DATA_API_URL!);
@@ -84,19 +68,12 @@ async function getAllDefenses() {
 
 async function getAllDefenseGames() {
 	// extract
-	const extractor = new Extractor(
-		process.env.TANK_KEY!,
-		process.env.DATA_API_URL!
-	);
+	const extractor = new Extractor(process.env.TANK_KEY!, process.env.DATA_API_URL!);
 	const nflTeamModelsAndGameMap = await extractor.getDSTGamesForEachNFLTeam();
 
 	// transform
-	const nflTeamModelGameMap =
-		nflTeamModelsAndGameMapToPlayerModelAndPlayerGameMap(
-			nflTeamModelsAndGameMap
-		);
-	const playerIDAndPlayerGamesMap =
-		dstMapToPlayerModelAndPlayerGamesMap(nflTeamModelGameMap);
+	const nflTeamModelGameMap = nflTeamModelsAndGameMapToPlayerModelAndPlayerGameMap(nflTeamModelsAndGameMap);
+	const playerIDAndPlayerGamesMap = dstMapToPlayerModelAndPlayerGamesMap(nflTeamModelGameMap);
 
 	// load
 	try {
@@ -111,21 +88,9 @@ async function getAllDefenseGames() {
 
 async function getAllPlayerGames() {
 	// extract
-	const extractor = new Extractor(
-		process.env.TANK_KEY!,
-		process.env.DATA_API_URL!
-	);
-	const nflTeamModelsAndGameMap = await extractor.getDSTGamesForEachNFLTeam(
-		true
-	);
-	const playerModels = await extractor.getAllPlayerModels(1000, [
-		"QB",
-		"RB",
-		"FB",
-		"WR",
-		"TE",
-		"K",
-	]);
+	const extractor = new Extractor(process.env.TANK_KEY!, process.env.DATA_API_URL!);
+	const nflTeamModelsAndGameMap = await extractor.getDSTGamesForEachNFLTeam(true);
+	const playerModels = await extractor.getAllPlayerModels(1000, ["QB", "RB", "FB", "WR", "TE", "K"]);
 
 	// transform
 	const games = Array.from(nflTeamModelsAndGameMap.gameMap.values()).flat();
@@ -148,22 +113,18 @@ async function getAllPlayerGames() {
 
 async function exportDataForLinearRegression() {
 	// extract
-	const extractor = new Extractor(
-		process.env.TANK_KEY!,
-		process.env.DATA_API_URL_LOCAL!
-	);
-	const playerModels = await extractor.getAllPlayerModels();
-	const playerGameModels = await extractor.getAllPlayerGameModels();
+	const extractor = new Extractor(process.env.TANK_KEY!, process.env.DATA_API_URL_LOCAL!);
+	// const playerModels = await extractor.getAllPlayerModels();
+	// const playerGameModels = await extractor.getAllPlayerGameModels(false);
+	const playerModels = extractor.readObjFromFile<Array<PlayerModel>>("./output/playerModels.json");
+	const playerGameModels = extractor.readObjFromFile<Array<PlayerGameModel>>("./output/playerGameModels.json");
 
 	// transform - into matrix of parameters
-	const linRegData = playerModelsAndPlayerGameModelsToLinRegData(
-		playerModels,
-		playerGameModels
-	);
+	const linRegData = playerModelsAndPlayerGameModelsToLinRegData(playerModels, playerGameModels);
 
 	// load - into file
 	const loader = new Loader(process.env.DATA_API_URL!);
-	loader.writeObjToFile("../../training/data/lin-reg-data.json", linRegData);
+	//await loader.writeObjToFile("../../training/data/lin-reg-data-avgrank.json", linRegData);
 }
 
 exportDataForLinearRegression().then(() => {});

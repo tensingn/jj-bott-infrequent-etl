@@ -1,17 +1,10 @@
-import {
-	PlayerGameModel,
-	PlayerModel,
-	PositionNames,
-} from "@tensingn/jj-bott-models";
+import { PlayerGameModel, PlayerModel, PositionNames } from "@tensingn/jj-bott-models";
 
 export const playerModelsAndPlayerGameModelsToLinRegData = (
 	playerModels: Array<PlayerModel>,
 	playerGameModels: Array<PlayerGameModel>
 ): Array<Array<string>> => {
-	const playerModelAndPlayerGamesMap = new Map<
-		PlayerModel,
-		Array<PlayerGameModel>
-	>();
+	const playerModelAndPlayerGamesMap = new Map<PlayerModel, Array<PlayerGameModel>>();
 	playerGameModels.forEach((playerGameModel) => {
 		const player = playerModels.find((p) => p.id === playerGameModel.playerID);
 		if (!player) {
@@ -27,65 +20,52 @@ export const playerModelsAndPlayerGameModelsToLinRegData = (
 
 	// each player's games must be sorted before further processing
 	playerModelAndPlayerGamesMap.forEach(
-		(playerPlayerGameModels: Array<PlayerGameModel>) => {
+		(
+			playerPlayerGameModels: Array<PlayerGameModel>,
+			key: PlayerModel,
+			map: Map<PlayerModel, Array<PlayerGameModel>>
+		) => {
 			playerPlayerGameModels.sort((game1, game2) => {
-				let game1DateNum = parseInt(game1.gameID?.split("_")[0]);
-				let game2DateNum = parseInt(game2.gameID?.split("_")[0]);
-
-				game1DateNum = typeof game1DateNum === "number" ? game1DateNum : 0;
-				game2DateNum = typeof game2DateNum === "number" ? game2DateNum : 0;
-
-				return game1DateNum - game2DateNum;
+				return parseInt(game1.season) - parseInt(game2.season) || parseInt(game1.week) - parseInt(game2.week);
 			});
+			map.set(key, playerPlayerGameModels);
 		}
 	);
 
 	const linRegData = new Array<Array<string>>();
-	playerModelAndPlayerGamesMap.forEach(
-		(
-			playerPlayerGameModels: Array<PlayerGameModel>,
-			playerModel: PlayerModel
-		) => {
-			playerPlayerGameModels.forEach((game, index) => {
-				// pos, avg ppg this season, avg ppg last season, opp avg ppg this season, actual pts
-				const values = new Array<string>(5);
+	playerModelAndPlayerGamesMap.forEach((playerPlayerGameModels: Array<PlayerGameModel>, playerModel: PlayerModel) => {
+		playerPlayerGameModels.forEach((game) => {
+			// pos, avg ppg this season, avg ppg last season, opp avg ppg this season, actual pts
+			const values = new Array<string>(5);
 
-				// pos
-				values[0] = determinePrimaryPositionInGame(playerModel, game);
+			// pos
+			values[0] = determinePrimaryPositionInGame(playerModel, game);
 
-				// avg ppg this season
-				values[1] = determineAveragePointsPerGameThisSeason(
-					game,
-					playerPlayerGameModels
-				);
+			// avg ppg this season
+			values[1] = calculateAveragePointsPerGameThisSeason(game, playerPlayerGameModels);
 
-				// avg ppg last season
-				values[2] = determineAveragePointsPerGameLastSeason(
-					game,
-					playerPlayerGameModels
-				);
+			// avg ppg last season
+			values[2] = calculateAveragePointsPerGameLastSeason(game, playerPlayerGameModels);
 
-				// opp avg ppg this season
-				const opponentID = game.opponent;
-				const opponent = playerModels.find((p) => p.id === opponentID);
-				if (!opponent) {
-					console.log("no opponent for " + game.id);
-				} else {
-					const opponentGames =
-						playerModelAndPlayerGamesMap.get(opponent) ?? [];
-					values[3] = determineAveragePointsPerGameThisSeason(
-						game,
-						opponentGames
-					);
-				}
+			// avg stat rank for position
+			values[3] = calculateAverageStatRankForPosition(game, values[0] as PositionNames);
 
-				// actual score
-				values[4] = game.points;
+			// opp avg ppg this season
+			const opponentID = game.opponent;
+			const opponent = playerModels.find((p) => p.id === opponentID);
+			if (!opponent) {
+				console.log("no opponent for " + game.id);
+			} else {
+				const opponentGames = playerModelAndPlayerGamesMap.get(opponent) ?? [];
+				values[4] = calculateAveragePointsPerGameThisSeason(game, opponentGames);
+			}
 
-				linRegData.push(values);
-			});
-		}
-	);
+			// actual score
+			values[5] = game.points;
+
+			linRegData.push(values);
+		});
+	});
 
 	return linRegData;
 };
@@ -103,19 +83,11 @@ const determinePrimaryPositionInGame = (
 	const rushYds = playerGameModel.stats.Rushing?.rushYds ?? 0;
 	const recYds = playerGameModel.stats.Receiving?.recYds ?? 0;
 
-	if (
-		passYds >= rushYds &&
-		passYds >= recYds &&
-		playerModel.positions.includes("QB")
-	) {
+	if (passYds >= rushYds && passYds >= recYds && playerModel.positions.includes("QB")) {
 		position = "QB";
 	}
 
-	if (
-		rushYds >= passYds &&
-		rushYds >= recYds &&
-		playerModel.positions.includes("RB")
-	) {
+	if (rushYds >= passYds && rushYds >= recYds && playerModel.positions.includes("RB")) {
 		position = "RB";
 	}
 
@@ -130,7 +102,7 @@ const determinePrimaryPositionInGame = (
 	return position;
 };
 
-const determineAveragePointsPerGameThisSeason = (
+const calculateAveragePointsPerGameThisSeason = (
 	currentGame: PlayerGameModel,
 	playerGames: Array<PlayerGameModel>
 ): string => {
@@ -142,8 +114,8 @@ const determineAveragePointsPerGameThisSeason = (
 			break;
 		}
 
-		if (determineGameSeason(currentGame) === determineGameSeason(playerGame)) {
-			totalPointsThisSeason += parseInt(playerGame.points);
+		if (currentGame.season === playerGame.season) {
+			totalPointsThisSeason += parseFloat(playerGame.points);
 			gamesBeforeCurrentGame++;
 		}
 	}
@@ -151,28 +123,95 @@ const determineAveragePointsPerGameThisSeason = (
 	return (totalPointsThisSeason / (gamesBeforeCurrentGame || 1)).toString();
 };
 
-const determineAveragePointsPerGameLastSeason = (
+const calculateAveragePointsPerGameLastSeason = (
 	currentGame: PlayerGameModel,
 	playerGames: Array<PlayerGameModel>
 ): string => {
-	const currentGameSeason = determineGameSeason(currentGame);
-	if (currentGameSeason === determineGameSeason(playerGames[0])) return "0";
+	if (currentGame.season === playerGames[0].season) return "0";
 
 	let totalPointsLastSeason = 0;
+	let totalGamesPlayerLastSeason = 0;
 	for (const playerGame of playerGames) {
-		if (currentGameSeason - determineGameSeason(playerGame) === 1) {
-			totalPointsLastSeason += parseInt(playerGame.points);
-		} else if (currentGameSeason - determineGameSeason(playerGame) < 1) {
+		if (parseInt(currentGame.season) - parseInt(playerGame.season) === 1) {
+			totalGamesPlayerLastSeason++;
+			totalPointsLastSeason += parseFloat(playerGame.points);
+		} else if (parseInt(currentGame.season) - parseInt(playerGame.season) < 1) {
 			break;
 		}
 	}
 
-	return (totalPointsLastSeason / 17).toString();
+	return (totalPointsLastSeason / totalGamesPlayerLastSeason).toString();
 };
 
-const determineGameSeason = (game: PlayerGameModel): number => {
-	const playerGameYear = parseInt(game.gameID.split("_")[0].slice(0, 4));
-	const playerGameMonth = parseInt(game.gameID.split("_")[0].slice(4, 6));
+const calculateAverageStatRankForPosition = (game: PlayerGameModel, position: PositionNames): string => {
+	let sum = 0;
+	let count = 0;
 
-	return playerGameMonth > 7 ? playerGameYear : playerGameYear - 1;
+	try {
+		switch (position) {
+			case "QB":
+				if (game.statRankings.Passing) {
+					sum +=
+						game.statRankings.Passing.int +
+						game.statRankings.Passing.passAttempts +
+						game.statRankings.Passing.passTD +
+						game.statRankings.Passing.passYds;
+					count += 4;
+				}
+				if (game.statRankings.Rushing) {
+					sum +=
+						game.statRankings.Rushing.carries + game.statRankings.Rushing.rushTD + game.statRankings.Rushing.rushYds;
+					count += 3;
+				}
+				break;
+			case "RB":
+			case "FB":
+				if (game.statRankings.Rushing) {
+					sum +=
+						game.statRankings.Rushing.carries + game.statRankings.Rushing.rushTD + game.statRankings.Rushing.rushYds;
+					count += 3;
+				}
+				if (game.statRankings.Receiving) {
+					sum +=
+						game.statRankings.Receiving.recTD +
+						game.statRankings.Receiving.recYds +
+						game.statRankings.Receiving.receptions +
+						game.statRankings.Receiving.targets;
+					count += 4;
+				}
+				break;
+			case "WR":
+			case "TE":
+				if (game.statRankings.Receiving) {
+					sum +=
+						game.statRankings.Receiving.recTD +
+						game.statRankings.Receiving.recYds +
+						game.statRankings.Receiving.receptions +
+						game.statRankings.Receiving.targets;
+					count += 4;
+				}
+				break;
+			case "K":
+				if (game.statRankings.Kicking) {
+					sum += game.statRankings.Kicking.fgMade + game.statRankings.Kicking.xpMade;
+					count += 2;
+				}
+				break;
+			case "DEF":
+				if (game.statRankings.Defense) {
+					sum +=
+						game.statRankings.Defense.ptsAllowed +
+						game.statRankings.Defense.takeaways +
+						game.statRankings.Defense.ydsAllowed;
+					count += 3;
+				}
+				break;
+			default:
+				throw new Error("invalid position");
+		}
+	} catch (e) {
+		console.log(game.id);
+	}
+
+	return (sum / count).toString();
 };

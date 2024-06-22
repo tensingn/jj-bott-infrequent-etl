@@ -45,10 +45,7 @@ export class Extractor {
 
 		let schedules = new Array<ScheduleTankModel>();
 		for (const year of years) {
-			const schedulesThatYear = await this.getSchedulesForSeason(
-				year,
-				nflTeams
-			);
+			const schedulesThatYear = await this.getSchedulesForSeason(year, nflTeams);
 			schedules.push(...schedulesThatYear);
 		}
 
@@ -69,10 +66,7 @@ export class Extractor {
 
 		const filteredSleeperPlayers = sleeperPlayers.filter(
 			(sp) =>
-				sp.team &&
-				sp.status !== "Inactive" &&
-				sp.espn_id &&
-				sp.fantasy_positions?.some((fp) => positions.includes(fp))
+				sp.team && sp.status !== "Inactive" && sp.espn_id && sp.fantasy_positions?.some((fp) => positions.includes(fp))
 		);
 
 		return await Promise.all(
@@ -86,10 +80,7 @@ export class Extractor {
 				};
 
 				try {
-					player.tankPlayer = await this.tankService.getPlayerInformation(
-						sp.espn_id,
-						getStats
-					);
+					player.tankPlayer = await this.tankService.getPlayerInformation(sp.espn_id, getStats);
 				} catch (err) {
 					console.log(err);
 				}
@@ -99,9 +90,7 @@ export class Extractor {
 		);
 	}
 
-	async getDSTGamesForEachNFLTeam(
-		includeFantasyPoints: boolean = false
-	): Promise<{
+	async getDSTGamesForEachNFLTeam(includeFantasyPoints: boolean = false): Promise<{
 		nflTeamModels: Array<NFLTeamModel>;
 		gameMap: Map<NFLTeamNames, Array<GameTankModel>>;
 	}> {
@@ -130,16 +119,10 @@ export class Extractor {
 		positions: Array<PositionNames> = [...PositionNamesArray]
 	): Promise<Array<PlayerModel>> {
 		await this.dataAPI.init();
-		return this.dataAPI.performAction<Array<PlayerModel>>(
-			"players",
-			null,
-			null,
-			"search",
-			{
-				limit,
-				positions,
-			}
-		);
+		return this.dataAPI.performAction<Array<PlayerModel>>("players", null, null, "search", {
+			limit,
+			positions,
+		});
 	}
 
 	getGame(gameID: string, includeFantasyPoints: boolean = false) {
@@ -151,19 +134,15 @@ export class Extractor {
 
 	async searchPlayerGameModels(
 		nflTeams: Array<NFLTeamNames>,
-		playerIDs: Array<string>
+		playerIDs: Array<string>,
+		seasons: Array<string> = []
 	): Promise<Array<PlayerGameModel>> {
 		await this.dataAPI.init();
-		return this.dataAPI.performAction(
-			"players",
-			null,
-			"playerGames",
-			"search",
-			{
-				nflTeams,
-				playerIDs,
-			}
-		);
+		return this.dataAPI.performAction("players", null, "playerGames", "search", {
+			nflTeams,
+			playerIDs,
+			seasons,
+		});
 	}
 
 	async getAllNFLTeamModels(): Promise<Array<NFLTeamModel>> {
@@ -171,20 +150,13 @@ export class Extractor {
 		return this.dataAPI.findMany("nflTeams", undefined, 32);
 	}
 
-	async getAllPlayerGameModels(): Promise<Array<PlayerGameModel>> {
-		const playerModels = await this.getAllPlayerModels(1000, [
-			"QB",
-			"RB",
-			"FB",
-			"WR",
-			"TE",
-			"K",
-		]);
+	async getAllPlayerGameModels(includeDefenses: boolean = true): Promise<Array<PlayerGameModel>> {
+		const playerGameModelsPromises = new Array<Promise<Array<PlayerGameModel>>>();
+		if (includeDefenses) {
+			playerGameModelsPromises.push(this.searchPlayerGameModels([...NFLTeamNamesArray], []));
+		}
 
-		const playerGameModelsPromises = [
-			this.searchPlayerGameModels([...NFLTeamNamesArray], []),
-		];
-
+		const playerModels = await this.getAllPlayerModels(1000, ["QB", "RB", "FB", "WR", "TE", "K"]);
 		const chunkSize = 100;
 		for (let i = 0; i < playerModels.length; i += chunkSize) {
 			playerGameModelsPromises.push(
@@ -195,9 +167,7 @@ export class Extractor {
 			);
 		}
 
-		const playerPlayerGameModels = (
-			await Promise.all(playerGameModelsPromises)
-		).flat();
+		const playerPlayerGameModels = (await Promise.all(playerGameModelsPromises)).flat();
 
 		return playerPlayerGameModels;
 	}
@@ -211,10 +181,7 @@ export class Extractor {
 		return this.tankService.getAllNFLTeams();
 	}
 
-	private async getNFLTeamSchedule(
-		teamID: string,
-		season: string
-	): Promise<ScheduleTankModel> {
+	private async getNFLTeamSchedule(teamID: string, season: string): Promise<ScheduleTankModel> {
 		return this.tankService.getNFLTeamSchedule(teamID, season);
 	}
 
@@ -229,10 +196,7 @@ export class Extractor {
 		return years;
 	}
 
-	private async getSchedulesForSeason(
-		year: string,
-		teams: Array<NFLTeamTankModel>
-	): Promise<Array<ScheduleTankModel>> {
+	private async getSchedulesForSeason(year: string, teams: Array<NFLTeamTankModel>): Promise<Array<ScheduleTankModel>> {
 		const schedulesThisYear: Array<ScheduleTankModel> = [];
 
 		for (const team of teams) {
