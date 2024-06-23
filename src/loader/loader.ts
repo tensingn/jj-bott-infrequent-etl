@@ -1,10 +1,4 @@
-import {
-	NFLGameModel,
-	NFLTeamModel,
-	PlayerGameModel,
-	PlayerModel,
-	TeamModel,
-} from "@tensingn/jj-bott-models";
+import { NFLGameModel, NFLTeamModel, PlayerGameModel, PlayerModel, TeamModel } from "@tensingn/jj-bott-models";
 import { DataAPIService } from "@tensingn/jj-bott-services";
 
 export class Loader {
@@ -24,21 +18,12 @@ export class Loader {
 		await this.dataAPI.bulkCreate("players", players);
 	}
 
-	async loadPlayerGamesForMultiplePlayers(
-		playerPlayerGamesMap: Map<string, Array<PlayerGameModel>>
-	) {
+	async loadPlayerGamesForMultiplePlayers(playerPlayerGamesMap: Map<string, Array<PlayerGameModel>>) {
 		await this.dataAPI.init();
 
 		const requests: Array<Promise<void>> = [];
 		playerPlayerGamesMap.forEach((playerGames, playerID) => {
-			requests.push(
-				this.dataAPI.bulkCreateSubEntity(
-					"players",
-					playerID,
-					"playerGames",
-					playerGames
-				)
-			);
+			requests.push(this.dataAPI.bulkCreateSubEntity("players", playerID, "playerGames", playerGames));
 		});
 
 		await Promise.all(requests);
@@ -46,12 +31,7 @@ export class Loader {
 
 	async loadPlayerGames(playerID: string, playerGames: Array<PlayerGameModel>) {
 		await this.dataAPI.init();
-		await this.dataAPI.bulkCreateSubEntity(
-			"players",
-			playerID,
-			"playerGames",
-			playerGames
-		);
+		await this.dataAPI.bulkCreateSubEntity("players", playerID, "playerGames", playerGames);
 	}
 
 	async updatePlayerGames(playerGames: Array<PlayerGameModel>) {
@@ -59,14 +39,7 @@ export class Loader {
 		const promises = new Array<Promise<void>>();
 
 		for (let i = 0; i < playerGames.length; i += 500) {
-			promises.push(
-				this.dataAPI.bulkUpdateSubEntity(
-					"players",
-					null,
-					"playerGames",
-					playerGames.slice(i, i + 499)
-				)
-			);
+			promises.push(this.dataAPI.bulkUpdateSubEntity("players", null, "playerGames", playerGames.slice(i, i + 500)));
 		}
 
 		await Promise.all(promises);
