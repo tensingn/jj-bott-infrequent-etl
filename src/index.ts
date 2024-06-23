@@ -16,8 +16,12 @@ import {
 	arrangePlayerGamesByWeek,
 	tankGamesAndNFLTeamsToGameModels,
 } from "./transformer/game-transformations";
-import { sleeperMatchupsToMatchupModels, sleeperRostersToTeamModels, sleeperSeasonsToSeasonModels, sleeperUsersToUserModels } from "./transformer/league-transformations";
-
+import {
+	sleeperMatchupsToMatchupModels,
+	sleeperRostersToTeamModels,
+	sleeperSeasonsToSeasonModels,
+	sleeperUsersToUserModels,
+} from "./transformer/league-transformations";
 
 async function getAllNFLTeams() {
 	const extractor = new Extractor(process.env.TANK_KEY!, process.env.DATA_API_URL!);
@@ -120,7 +124,7 @@ async function getAllPlayerGames() {
 
 async function getAllGames() {
 	// extract
-	const extractor = new Extractor(process.env.FAKE_TANK_KEY!, process.env.DATA_API_URL_LOCAL!);
+	const extractor = new Extractor(process.env.TANK_KEY!, process.env.DATA_API_URL_LOCAL!);
 	const gamesWithWeek = await extractor.getAllNFLGamesWithWeek();
 	const nflTeams = await extractor.getAllNFLTeamModels();
 
@@ -137,7 +141,7 @@ async function getAllGames() {
 		console.log(e);
 	}
 }
-	
+
 async function getAllSleeperSeasons() {
 	// extract
 	const extractor = new Extractor(process.env.TANK_KEY!, process.env.DATA_API_URL_LOCAL!);
@@ -159,7 +163,7 @@ async function getAllSleeperSeasons() {
 
 async function updatePlayerGamesWithWeek() {
 	// extract
-	const extractor = new Extractor(process.env.FAKE_TANK_KEY!, process.env.DATA_API_URL_LOCAL!);
+	const extractor = new Extractor(process.env.TANK_KEY!, process.env.DATA_API_URL_LOCAL!);
 	const playerGames = await extractor.getAllPlayerGameModels(["2022", "2023"]);
 	const gameModels = await extractor.getAllGameModels();
 
@@ -199,7 +203,7 @@ async function getAllSleeperUsers() {
 
 async function getSinglePlayer(tankID: string) {
 	// extract
-	const extractor = new Extractor(process.env.FAKE_TANK_KEY!, process.env.DATA_API_URL_LOCAL!);
+	const extractor = new Extractor(process.env.TANK_KEY!, process.env.DATA_API_URL_LOCAL!);
 	const tankPlayer = await extractor.getTankPlayer(tankID);
 
 	const playerModels = sleeperAndTankPlayerModelsToPlayerModels([
@@ -230,7 +234,7 @@ async function getSinglePlayer(tankID: string) {
 
 async function getPlayerGamesForSinglePlayer(playerID: string) {
 	// extract
-	const extractor = new Extractor(process.env.FAKE_TANK_KEY!, process.env.DATA_API_URL_LOCAL!);
+	const extractor = new Extractor(process.env.TANK_KEY!, process.env.DATA_API_URL_LOCAL!);
 	const nflTeamModelsAndGameMap = await extractor.getDSTGamesForEachNFLTeam(true);
 	const playerModels = [await extractor.getSinglePlayerModel(playerID)];
 	playerModels[0].id = playerID;
@@ -256,7 +260,7 @@ async function getPlayerGamesForSinglePlayer(playerID: string) {
 
 async function updatePlayerGamesWithRankingData(season: string) {
 	// extract
-	const extractor = new Extractor(process.env.FAKE_TANK_KEY!, process.env.DATA_API_URL_LOCAL!);
+	const extractor = new Extractor(process.env.TANK_KEY!, process.env.DATA_API_URL_LOCAL!);
 	const playerGameModels = await extractor.getAllPlayerGameModels([season], false);
 
 	// transform
