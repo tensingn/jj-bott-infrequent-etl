@@ -16,9 +16,11 @@ import {
 	arrangePlayerGamesByWeek,
 	tankGamesAndNFLTeamsToGameModels,
 } from "./transformer/game-transformations";
+import { sleeperMatchupsToMatchupModels, sleeperRostersToTeamModels, sleeperSeasonsToSeasonModels, sleeperUsersToUserModels } from "./transformer/league-transformations";
+
 
 async function getAllNFLTeams() {
-	const extractor = new Extractor(process.env.FAKE_TANK_KEY!, process.env.DATA_API_URL!);
+	const extractor = new Extractor(process.env.TANK_KEY!, process.env.DATA_API_URL!);
 	const { nflTeams, schedules } = await extractor.getAllNFLTeamsAndSchedules(2);
 	console.log("retrieved teams and schedules");
 
@@ -36,7 +38,7 @@ async function getAllNFLTeams() {
 }
 
 async function getAllPlayers() {
-	const extractor = new Extractor(process.env.FAKE_TANK_KEY!, process.env.DATA_API_URL!);
+	const extractor = new Extractor(process.env.TANK_KEY!, process.env.DATA_API_URL!);
 	const sleeperAndTankPlayers = await extractor.getAllPlayers(
 		PositionNamesArray.map((p) => p),
 		true
@@ -55,7 +57,7 @@ async function getAllPlayers() {
 }
 
 async function getAllDefenses() {
-	const extractor = new Extractor(process.env.FAKE_TANK_KEY!, process.env.DATA_API_URL!);
+	const extractor = new Extractor(process.env.TANK_KEY!, process.env.DATA_API_URL!);
 
 	let nflTeamModelsAndGameMap = await extractor.getDSTGamesForEachNFLTeam();
 
@@ -73,7 +75,7 @@ async function getAllDefenses() {
 
 async function getAllDefenseGames() {
 	// extract
-	const extractor = new Extractor(process.env.FAKE_TANK_KEY!, process.env.DATA_API_URL!);
+	const extractor = new Extractor(process.env.TANK_KEY!, process.env.DATA_API_URL!);
 	const nflTeamModelsAndGameMap = await extractor.getDSTGamesForEachNFLTeam();
 
 	// transform
@@ -93,7 +95,7 @@ async function getAllDefenseGames() {
 
 async function getAllPlayerGames() {
 	// extract
-	const extractor = new Extractor(process.env.FAKE_TANK_KEY!, process.env.DATA_API_URL!);
+	const extractor = new Extractor(process.env.TANK_KEY!, process.env.DATA_API_URL!);
 	const nflTeamModelsAndGameMap = await extractor.getDSTGamesForEachNFLTeam(true);
 	const playerModels = await extractor.getAllPlayerModels();
 
@@ -135,6 +137,25 @@ async function getAllGames() {
 		console.log(e);
 	}
 }
+	
+async function getAllSleeperSeasons() {
+	// extract
+	const extractor = new Extractor(process.env.TANK_KEY!, process.env.DATA_API_URL_LOCAL!);
+	const seasons = await extractor.getAllSeasons();
+
+	// transform
+	const seasonModels = sleeperSeasonsToSeasonModels(seasons);
+
+	// load
+	try {
+		const loader = new Loader(process.env.DATA_API_URL_LOCAL!);
+		await loader.loadSeasons(seasonModels);
+		console.log("done");
+	} catch (e) {
+		console.log("error:");
+		console.log(e);
+	}
+}
 
 async function updatePlayerGamesWithWeek() {
 	// extract
@@ -149,6 +170,26 @@ async function updatePlayerGamesWithWeek() {
 	try {
 		const loader = new Loader(process.env.DATA_API_URL_LOCAL!);
 		await loader.updatePlayerGames(updatedPlayerGames);
+		console.log("done");
+	} catch (e) {
+		console.log("error:");
+		console.log(e);
+	}
+}
+
+async function getAllSleeperUsers() {
+	// extract
+	const extractor = new Extractor(process.env.TANK_KEY!, process.env.DATA_API_URL_LOCAL!);
+	const seasons = await extractor.getAllSeasons();
+	const users = await extractor.getAllUsers(seasons[0].league_id);
+
+	// transform
+	const userModels = sleeperUsersToUserModels(users);
+
+	// load
+	try {
+		const loader = new Loader(process.env.DATA_API_URL_LOCAL!);
+		await loader.loadUsers(userModels);
 		console.log("done");
 	} catch (e) {
 		console.log("error:");
@@ -233,4 +274,43 @@ async function updatePlayerGamesWithRankingData(season: string) {
 	}
 }
 
-updatePlayerGamesWithRankingData("2023").then(() => {});
+async function getAllSleeperMatchups() {
+	// extract
+	const extractor = new Extractor(process.env.TANK_KEY!, process.env.DATA_API_URL_LOCAL!);
+	const seasons = await extractor.getAllSeasons();
+	const seasonsAndMatchups = await extractor.getAllMatchupsForSeasons(seasons);
+
+	// transform
+	const matchupModels = sleeperMatchupsToMatchupModels(seasonsAndMatchups);
+
+	// load
+	try {
+		const loader = new Loader(process.env.DATA_API_URL_LOCAL!);
+		await loader.loadMatchups(matchupModels);
+		console.log("done");
+	} catch (e) {
+		console.log("error:");
+		console.log(e);
+	}
+}
+
+async function getAllTeams() {
+	// extract
+	const extractor = new Extractor(process.env.TANK_KEY!, process.env.DATA_API_URL_LOCAL!);
+	const seasons = await extractor.getAllSeasons();
+	const seasonsAndRosters = await extractor.getAllRostersForSeasons(seasons);
+	const users = await extractor.getAllUserModels();
+
+	// transform
+	const teamModels = sleeperRostersToTeamModels(seasonsAndRosters, users);
+
+	// load
+	try {
+		const loader = new Loader(process.env.DATA_API_URL_LOCAL!);
+		await loader.loadTeamModels(teamModels);
+		console.log("done");
+	} catch (e) {
+		console.log("error:");
+		console.log(e);
+	}
+}

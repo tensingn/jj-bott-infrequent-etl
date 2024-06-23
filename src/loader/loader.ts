@@ -1,4 +1,13 @@
-import { NFLGameModel, NFLTeamModel, PlayerGameModel, PlayerModel, TeamModel } from "@tensingn/jj-bott-models";
+import {
+	MatchupModel,
+	NFLGameModel,
+	NFLTeamModel,
+	PlayerGameModel,
+	PlayerModel,
+	SeasonModel,
+	TeamModel,
+	UserModel,
+} from "@tensingn/jj-bott-models";
 import { DataAPIService } from "@tensingn/jj-bott-services";
 
 export class Loader {
@@ -48,5 +57,25 @@ export class Loader {
 	async loadGames(games: Array<NFLGameModel>) {
 		await this.dataAPI.init();
 		await this.dataAPI.bulkCreate("nflGames", games);
+	}
+
+	async loadSeasons(seasons: Array<SeasonModel>) {
+		await this.dataAPI.init();
+		await this.dataAPI.bulkCreate("seasons", seasons);
+	}
+
+	async loadUsers(users: Array<UserModel>) {
+		await this.dataAPI.init();
+		await this.dataAPI.bulkCreate("users", users);
+	}
+
+	async loadMatchups(matchups: Array<MatchupModel>) {
+		await this.dataAPI.init();
+		await this.dataAPI.bulkCreate("matchups", matchups);
+	}
+
+	async loadTeamModels(teams: Array<TeamModel>) {
+		await this.dataAPI.init();
+		await this.dataAPI.bulkCreate("teams", teams);
 	}
 }

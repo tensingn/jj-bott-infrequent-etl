@@ -1,6 +1,7 @@
 import * as fs from "node:fs";
 import {
 	NFLGameModel,
+	MatchupSleeperModel,
 	NFLTeamModel,
 	NFLTeamNames,
 	NFLTeamNamesArray,
@@ -9,11 +10,12 @@ import {
 	PlayerSleeperModel,
 	PositionNames,
 	PositionNamesArray,
-	ScoringSettings,
+	RosterSleeperModel,
+	SeasonSleeperModel,
+	UserModel,
+	UserSleeperModel,
 } from "@tensingn/jj-bott-models";
 import {
-	DSTTankModel,
-	DSTTeamTankModel,
 	DataAPIService,
 	GameTankModel,
 	NFLTeamTankModel,
@@ -256,5 +258,58 @@ export class Extractor {
 		}
 
 		return schedulesThisYear;
+	}
+
+	async getAllSeasons(): Promise<Array<SeasonSleeperModel>> {
+		const seasons = new Array<SeasonSleeperModel>();
+		let tempSeason: SeasonSleeperModel;
+		let tempSeasonID = "992215050884292608";
+
+		do {
+			tempSeason = await this.sleeperService.getSeason(tempSeasonID);
+			seasons.push(tempSeason);
+			tempSeasonID = tempSeason.previous_league_id;
+		} while (tempSeason.previous_league_id);
+
+		return seasons;
+	}
+
+	async getAllRostersForSeasons(
+		seasons: Array<SeasonSleeperModel>
+	): Promise<Map<SeasonSleeperModel, Array<RosterSleeperModel>>> {
+		const map = new Map<SeasonSleeperModel, Array<RosterSleeperModel>>();
+
+		for (let i = 0; i < seasons.length; i++) {
+			map.set(seasons[i], await this.sleeperService.getAllRostersForSeason(seasons[i].league_id));
+		}
+
+		return map;
+	}
+
+	async getAllMatchupsForSeasons(
+		seasons: Array<SeasonSleeperModel>
+	): Promise<Map<SeasonSleeperModel, Map<string, Array<MatchupSleeperModel>>>> {
+		const map = new Map<SeasonSleeperModel, Map<string, Array<MatchupSleeperModel>>>();
+
+		for (let i = 0; i < seasons.length; i++) {
+			const weeksMap = new Map<string, Array<MatchupSleeperModel>>();
+
+			for (let j = 1; j < 18; j++) {
+				weeksMap.set(j.toString(), await this.sleeperService.getAllMatchupsForWeek(seasons[i].league_id, j.toString()));
+			}
+
+			map.set(seasons[i], weeksMap);
+		}
+
+		return map;
+	}
+
+	getAllUsers(seasonID: string): Promise<Array<UserSleeperModel>> {
+		return this.sleeperService.getAllUsersForSeason(seasonID);
+	}
+
+	async getAllUserModels(): Promise<Array<UserModel>> {
+		await this.dataAPI.init();
+		return this.dataAPI.findMany("users", undefined, 10);
 	}
 }
