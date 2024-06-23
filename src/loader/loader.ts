@@ -1,5 +1,6 @@
 import {
 	MatchupModel,
+	NFLGameModel,
 	NFLTeamModel,
 	PlayerGameModel,
 	PlayerModel,
@@ -42,9 +43,20 @@ export class Loader {
 		await this.dataAPI.bulkCreateSubEntity("players", playerID, "playerGames", playerGames);
 	}
 
-	async test() {
+	async updatePlayerGames(playerGames: Array<PlayerGameModel>) {
 		await this.dataAPI.init();
-		return this.dataAPI.findMany<NFLTeamModel>("nflTeams");
+		const promises = new Array<Promise<void>>();
+
+		for (let i = 0; i < playerGames.length; i += 500) {
+			promises.push(this.dataAPI.bulkUpdateSubEntity("players", null, "playerGames", playerGames.slice(i, i + 500)));
+		}
+
+		await Promise.all(promises);
+	}
+
+	async loadGames(games: Array<NFLGameModel>) {
+		await this.dataAPI.init();
+		await this.dataAPI.bulkCreate("nflGames", games);
 	}
 
 	async loadSeasons(seasons: Array<SeasonModel>) {
