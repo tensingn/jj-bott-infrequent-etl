@@ -1,14 +1,16 @@
 import {
+	MatchupSleeperModel,
 	NFLTeamModel,
 	NFLTeamNames,
 	PlayerModel,
 	PlayerSleeperModel,
 	PositionNames,
-	ScoringSettings,
+	RosterSleeperModel,
+	SeasonSleeperModel,
+	UserModel,
+	UserSleeperModel,
 } from "@tensingn/jj-bott-models";
 import {
-	DSTTankModel,
-	DSTTeamTankModel,
 	DataAPIService,
 	GameTankModel,
 	NFLTeamTankModel,
@@ -44,10 +46,7 @@ export class Extractor {
 
 		let schedules = new Array<ScheduleTankModel>();
 		for (const year of years) {
-			const schedulesThatYear = await this.getSchedulesForSeason(
-				year,
-				nflTeams
-			);
+			const schedulesThatYear = await this.getSchedulesForSeason(year, nflTeams);
 			schedules.push(...schedulesThatYear);
 		}
 
@@ -68,10 +67,7 @@ export class Extractor {
 
 		const filteredSleeperPlayers = sleeperPlayers.filter(
 			(sp) =>
-				sp.team &&
-				sp.status !== "Inactive" &&
-				sp.espn_id &&
-				sp.fantasy_positions?.some((fp) => positions.includes(fp))
+				sp.team && sp.status !== "Inactive" && sp.espn_id && sp.fantasy_positions?.some((fp) => positions.includes(fp))
 		);
 
 		return await Promise.all(
@@ -85,10 +81,7 @@ export class Extractor {
 				};
 
 				try {
-					player.tankPlayer = await this.tankService.getPlayerInformation(
-						sp.espn_id,
-						getStats
-					);
+					player.tankPlayer = await this.tankService.getPlayerInformation(sp.espn_id, getStats);
 				} catch (err) {
 					console.log(err);
 				}
@@ -98,20 +91,14 @@ export class Extractor {
 		);
 	}
 
-	async getDSTGamesForEachNFLTeam(
-		includeFantasyPoints: boolean = false
-	): Promise<{
+	async getDSTGamesForEachNFLTeam(includeFantasyPoints: boolean = false): Promise<{
 		nflTeamModels: Array<NFLTeamModel>;
 		gameMap: Map<NFLTeamNames, Array<GameTankModel>>;
 	}> {
 		const gameMap = new Map<NFLTeamNames, Array<GameTankModel>>();
 
 		await this.dataAPI.init();
-		const nflTeamModels = await this.dataAPI.findMany<NFLTeamModel>(
-			"nflTeams",
-			undefined,
-			32
-		);
+		const nflTeamModels = await this.dataAPI.findMany<NFLTeamModel>("nflTeams", undefined, 32);
 
 		for (const nflTeam of nflTeamModels) {
 			const gamesArray = await Promise.all(
@@ -145,10 +132,7 @@ export class Extractor {
 		return this.tankService.getAllNFLTeams();
 	}
 
-	private async getNFLTeamSchedule(
-		teamID: string,
-		season: string
-	): Promise<ScheduleTankModel> {
+	private async getNFLTeamSchedule(teamID: string, season: string): Promise<ScheduleTankModel> {
 		return this.tankService.getNFLTeamSchedule(teamID, season);
 	}
 
@@ -163,10 +147,7 @@ export class Extractor {
 		return years;
 	}
 
-	private async getSchedulesForSeason(
-		year: string,
-		teams: Array<NFLTeamTankModel>
-	): Promise<Array<ScheduleTankModel>> {
+	private async getSchedulesForSeason(year: string, teams: Array<NFLTeamTankModel>): Promise<Array<ScheduleTankModel>> {
 		const schedulesThisYear: Array<ScheduleTankModel> = [];
 
 		for (const team of teams) {
@@ -175,5 +156,58 @@ export class Extractor {
 		}
 
 		return schedulesThisYear;
+	}
+
+	async getAllSeasons(): Promise<Array<SeasonSleeperModel>> {
+		const seasons = new Array<SeasonSleeperModel>();
+		let tempSeason: SeasonSleeperModel;
+		let tempSeasonID = "992215050884292608";
+
+		do {
+			tempSeason = await this.sleeperService.getSeason(tempSeasonID);
+			seasons.push(tempSeason);
+			tempSeasonID = tempSeason.previous_league_id;
+		} while (tempSeason.previous_league_id);
+
+		return seasons;
+	}
+
+	async getAllRostersForSeasons(
+		seasons: Array<SeasonSleeperModel>
+	): Promise<Map<SeasonSleeperModel, Array<RosterSleeperModel>>> {
+		const map = new Map<SeasonSleeperModel, Array<RosterSleeperModel>>();
+
+		for (let i = 0; i < seasons.length; i++) {
+			map.set(seasons[i], await this.sleeperService.getAllRostersForSeason(seasons[i].league_id));
+		}
+
+		return map;
+	}
+
+	async getAllMatchupsForSeasons(
+		seasons: Array<SeasonSleeperModel>
+	): Promise<Map<SeasonSleeperModel, Map<string, Array<MatchupSleeperModel>>>> {
+		const map = new Map<SeasonSleeperModel, Map<string, Array<MatchupSleeperModel>>>();
+
+		for (let i = 0; i < seasons.length; i++) {
+			const weeksMap = new Map<string, Array<MatchupSleeperModel>>();
+
+			for (let j = 1; j < 18; j++) {
+				weeksMap.set(j.toString(), await this.sleeperService.getAllMatchupsForWeek(seasons[i].league_id, j.toString()));
+			}
+
+			map.set(seasons[i], weeksMap);
+		}
+
+		return map;
+	}
+
+	getAllUsers(seasonID: string): Promise<Array<UserSleeperModel>> {
+		return this.sleeperService.getAllUsersForSeason(seasonID);
+	}
+
+	async getAllUserModels(): Promise<Array<UserModel>> {
+		await this.dataAPI.init();
+		return this.dataAPI.findMany("users", undefined, 10);
 	}
 }
