@@ -34,7 +34,7 @@ export const playerModelsAndPlayerGameModelsToLinRegData = (
 
 	const linRegData = new Array<Array<string>>();
 	playerModelAndPlayerGamesMap.forEach((playerPlayerGameModels: Array<PlayerGameModel>, playerModel: PlayerModel) => {
-		playerPlayerGameModels.forEach((game) => {
+		playerPlayerGameModels.forEach((game, index) => {
 			// pos, avg ppg this season, avg ppg last season, opp avg ppg this season, actual pts
 			const values = new Array<string>(5);
 
@@ -47,9 +47,6 @@ export const playerModelsAndPlayerGameModelsToLinRegData = (
 			// avg ppg last season
 			values[2] = calculateAveragePointsPerGameLastSeason(game, playerPlayerGameModels);
 
-			// avg stat rank for position
-			values[3] = calculateAverageStatRankForPosition(game, values[0] as PositionNames);
-
 			// opp avg ppg this season
 			const opponentID = game.opponent;
 			const opponent = playerModels.find((p) => p.id === opponentID);
@@ -61,7 +58,7 @@ export const playerModelsAndPlayerGameModelsToLinRegData = (
 			}
 
 			// actual score
-			values[5] = game.points;
+			values[4] = game.points;
 
 			linRegData.push(values);
 		});
@@ -115,7 +112,7 @@ const calculateAveragePointsPerGameThisSeason = (
 		}
 
 		if (currentGame.season === playerGame.season) {
-			totalPointsThisSeason += parseFloat(playerGame.points);
+			totalPointsThisSeason += parseInt(playerGame.points);
 			gamesBeforeCurrentGame++;
 		}
 	}
@@ -132,10 +129,9 @@ const calculateAveragePointsPerGameLastSeason = (
 	let totalPointsLastSeason = 0;
 	let totalGamesPlayerLastSeason = 0;
 	for (const playerGame of playerGames) {
-		if (parseInt(currentGame.season) - parseInt(playerGame.season) === 1) {
-			totalGamesPlayerLastSeason++;
-			totalPointsLastSeason += parseFloat(playerGame.points);
-		} else if (parseInt(currentGame.season) - parseInt(playerGame.season) < 1) {
+		if (parseFloat(currentGame.season) - parseFloat(playerGame.season) === 1) {
+			totalPointsLastSeason += parseInt(playerGame.points);
+		} else if (parseFloat(currentGame.season) - parseFloat(playerGame.season) < 1) {
 			break;
 		}
 	}
@@ -214,4 +210,22 @@ const calculateAverageStatRankForPosition = (game: PlayerGameModel, position: Po
 	}
 
 	return (sum / count).toString();
+};
+
+const determineAveragePointsOfLast5Games = (
+	currentGame: PlayerGameModel,
+	playerGames: Array<PlayerGameModel>
+): string => {
+	let total = 0;
+
+	const currentGameIndex = playerGames.indexOf(currentGame);
+	const startIndex = currentGameIndex < 5 ? 0 : currentGameIndex - 5;
+
+	if (currentGameIndex < 1) return "0";
+
+	for (let i = startIndex; i < currentGameIndex; i++) {
+		total += parseFloat(playerGames[i].points);
+	}
+
+	return (total / (currentGameIndex - startIndex)).toString();
 };

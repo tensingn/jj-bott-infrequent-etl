@@ -16,6 +16,7 @@ import {
 	ScheduleTankModel,
 	SleeperService,
 	TankService,
+	WeeklyNFLScheduleOptions,
 } from "@tensingn/jj-bott-services";
 import { PlayerTankModel } from "@tensingn/jj-bott-services/cjs/tank/models/player.tank.model";
 
@@ -175,6 +176,39 @@ export class Extractor {
 	readObjFromFile<T>(fileName: string): T {
 		const data = fs.readFileSync(fileName, "utf8");
 		return JSON.parse(data) as T;
+	}
+
+	getWeeklyNFLSchedule(
+		options: WeeklyNFLScheduleOptions
+	): Promise<Array<GameTankModel>> {
+		return this.tankService.getWeeklyNFLSchedule(options);
+	}
+
+	async getAllNFLGamesWithWeek(): Promise<Array<GameTankModel>> {
+		const [games2022, games2023] = await Promise.all([
+			this.getWeeklyNFLSchedule({
+				season: 2022,
+				seasonType: "reg",
+				week: "all",
+			}),
+			this.getWeeklyNFLSchedule({
+				season: 2023,
+				seasonType: "reg",
+				week: "all",
+			}),
+		]);
+
+		return games2022.concat(games2023);
+	}
+
+	async getAllGamesByGameID(
+		games: Array<GameTankModel>
+	): Promise<Array<GameTankModel>> {
+		const allTankGames = await Promise.all(
+			games.map((game) => this.getGame(game.gameID, true))
+		);
+
+		return allTankGames;
 	}
 
 	private async getAllNFLTeams(): Promise<Array<NFLTeamTankModel>> {

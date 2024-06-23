@@ -2,7 +2,7 @@ import "dotenv/config";
 import { Extractor } from "./extractor/extractor";
 import { nflTeamTankModelsToNFLTeamModelWithGames } from "./transformer/nfl-team-transformations";
 import { Loader } from "./loader/loader";
-import { NFLTeamNamesArray, PlayerGameModel, PlayerModel, PositionNamesArray } from "@tensingn/jj-bott-models";
+import { PlayerGameModel, PlayerModel, PositionNamesArray } from "@tensingn/jj-bott-models";
 import {
 	dstMapToPlayerModelAndPlayerGamesMap,
 	gamesAndPlayerModelsToPlayerGamesMap,
@@ -124,7 +124,27 @@ async function exportDataForLinearRegression() {
 
 	// load - into file
 	const loader = new Loader(process.env.DATA_API_URL!);
-	//await loader.writeObjToFile("../../training/data/lin-reg-data-avgrank.json", linRegData);
+	loader.writeObjToFile("../../training/data/lin-reg-data-last5.json", linRegData);
 }
 
-exportDataForLinearRegression().then(() => {});
+async function getAllGames() {
+	// extract
+	const extractor = new Extractor(process.env.TANK_KEY!, process.env.DATA_API_URL_LOCAL!);
+	const gamesWithWeek = await extractor.getAllNFLGamesWithWeek();
+	const nflTeams = await extractor.getAllNFLTeamModels();
+
+	// transform
+	//const gameModels = tankGamesAndNFLTeamsToGameModels(gamesWithWeek, nflTeams);
+
+	// load
+	try {
+		const loader = new Loader(process.env.DATA_API_URL_LOCAL!);
+		//	await loader.loadGames(gameModels);
+		console.log("done");
+	} catch (e) {
+		console.log("error:");
+		console.log(e);
+	}
+}
+
+getAllGames().then(() => {});
