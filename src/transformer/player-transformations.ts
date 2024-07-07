@@ -63,9 +63,7 @@ export const nflTeamModelsAndGameMapToPlayerModelAndPlayerGameMap = (map: {
 	return returnMap;
 };
 
-export const dstMapToPlayerModelAndPlayerGamesMap = (
-	dstMap: Map<NFLTeamModel, Array<GameTankModel>>
-) => {
+export const dstMapToPlayerModelAndPlayerGamesMap = (dstMap: Map<NFLTeamModel, Array<GameTankModel>>) => {
 	const map = new Map<string, Array<PlayerGameModel>>();
 	const nflTeams = Array.from(dstMap.keys());
 
@@ -73,8 +71,7 @@ export const dstMapToPlayerModelAndPlayerGamesMap = (
 		map.set(
 			nflTeam.teamName,
 			games.map((game) => {
-				const dst =
-					game.DST.home.teamID === nflTeam.id ? game.DST.home : game.DST.away;
+				const dst = game.DST.home.teamID === nflTeam.id ? game.DST.home : game.DST.away;
 
 				const playerGameModel = new PlayerGameModel();
 				playerGameModel.playerID = nflTeam.teamName;
@@ -135,9 +132,7 @@ export const dstMapToPlayerModelAndPlayerGamesMap = (
 				points += sacksParsed * ScoringSettings.sack;
 
 				// interceptions
-				const defensiveInterceptionsParsed = parseInt(
-					dst.defensiveInterceptions ?? 0
-				);
+				const defensiveInterceptionsParsed = parseInt(dst.defensiveInterceptions ?? 0);
 				points += defensiveInterceptionsParsed * ScoringSettings.int;
 
 				// fumble recoveries
@@ -149,9 +144,7 @@ export const dstMapToPlayerModelAndPlayerGamesMap = (
 				points += safetiesParsed * ScoringSettings.safe;
 
 				// forced fumbles
-				const playerGames: Array<PlayerGameTankModel> = Object.values(
-					game.playerStats
-				);
+				const playerGames: Array<PlayerGameTankModel> = Object.values(game.playerStats);
 				for (let playerGame of playerGames) {
 					if (playerGame.teamID !== nflTeam.id && playerGame.Defense?.fumbles) {
 						points += ScoringSettings.ff;
@@ -166,6 +159,33 @@ export const dstMapToPlayerModelAndPlayerGamesMap = (
 	});
 
 	return map;
+};
+
+export const addStatsToDefensePlayerGames = (
+	games: Array<GameTankModel>,
+	defensivePlayerGames: Array<PlayerGameModel>,
+	nflTeamModels: Array<NFLTeamModel>
+): Array<PlayerGameModel> => {
+	// get rid of duplicates
+	const gamesNoDuplicates = new Array<GameTankModel>();
+	games.forEach((game) => {
+		if (!gamesNoDuplicates.find((g) => g.gameID === game.gameID)) {
+			gamesNoDuplicates.push(game);
+		}
+	});
+
+	const playerGames = new Array<PlayerGameModel>();
+	defensivePlayerGames.forEach((dpg) => {
+		const game = gamesNoDuplicates.find((g) => g.gameID === dpg.gameID)!;
+		const team = nflTeamModels.find((t) => t.teamName === dpg.team)!;
+		dpg.isHome = game.teamIDHome === team.id;
+		dpg.stats = {
+			Defense: calculateDefenseStats(game, dpg.isHome),
+		};
+		playerGames.push(dpg);
+	});
+
+	return playerGames;
 };
 
 export const gamesAndPlayerModelsToPlayerGamesMap = (
@@ -183,9 +203,7 @@ export const gamesAndPlayerModelsToPlayerGamesMap = (
 
 	const playerGamesMap = new Map<string, Array<PlayerGameModel>>();
 	gamesNoDuplicates.forEach((game) => {
-		const playerGames: Array<PlayerGameTankModel> = Object.values(
-			game.playerStats
-		);
+		const playerGames: Array<PlayerGameTankModel> = Object.values(game.playerStats);
 
 		for (let playerGame of playerGames) {
 			const player = playerModels.find((p) => p.tankID === playerGame.playerID);
@@ -196,10 +214,10 @@ export const gamesAndPlayerModelsToPlayerGamesMap = (
 			const playerGameModel = new PlayerGameModel();
 			playerGameModel.playerID = player.id;
 			playerGameModel.gameID = game.gameID;
-			playerGameModel.opponent =
-				game.teamIDHome === playerGame.teamID
-					? nflTeams.find((t) => t.id === game.teamIDAway)!.teamName
-					: nflTeams.find((t) => t.id === game.teamIDHome)!.teamName;
+			playerGameModel.isHome = game.teamIDHome === playerGame.teamID;
+			playerGameModel.opponent = playerGameModel.isHome
+				? nflTeams.find((t) => t.id === game.teamIDAway)!.teamName
+				: nflTeams.find((t) => t.id === game.teamIDHome)!.teamName;
 			playerGameModel.points = playerGame.fantasyPointsDefault?.halfPPR ?? 0;
 
 			playerGameModel.stats = {
@@ -220,3 +238,63 @@ export const gamesAndPlayerModelsToPlayerGamesMap = (
 
 	return playerGamesMap;
 };
+
+function calculateDefenseStats(game: GameTankModel, isHome: boolean) {
+	const dst = isHome ? game.DST.home : game.DST.away;
+	const teamID = dst.teamID;
+
+	let defenseStats: {
+		defensiveInterceptions?: string;
+		fumblesRecovered?: string;
+		sacks?: string;
+		defTD?: string;
+		ydsAllowed?: string;
+		ptsAllowed?: string;
+		rushYdsAllowed?: string;
+		passYdsAllowed?: string;
+		rushTDsAllowed?: string;
+		passTDsAllowed?: string;
+		fgAllowed?: string;
+		xpAllowed?: string;
+	} = {};
+
+	defenseStats.defensiveInterceptions = dst.defensiveInterceptions;
+	defenseStats.fumblesRecovered = dst.fumblesRecovered;
+	defenseStats.sacks = dst.sacks;
+	defenseStats.defTD = dst.defTD;
+	defenseStats.ydsAllowed = dst.ydsAllowed;
+	defenseStats.ptsAllowed = dst.ptsAllowed;
+	let rushYdsAllowed = 0;
+	let passYdsAllowed = 0;
+	let rushTDsAllowed = 0;
+	let passTDsAllowed = 0;
+	let fgAllowed = 0;
+	let xpAllowed = 0;
+
+	const playerStats: Map<string, PlayerGameTankModel> = new Map(Object.entries(game.playerStats));
+	playerStats.forEach((playerStat) => {
+		if (playerStat.teamID !== teamID) {
+			if (playerStat.Passing) {
+				passYdsAllowed += isNaN(parseFloat(playerStat.Passing.passYds)) ? 0 : parseFloat(playerStat.Passing.passYds);
+				passTDsAllowed += isNaN(parseFloat(playerStat.Passing.passTD)) ? 0 : parseFloat(playerStat.Passing.passTD);
+			}
+			if (playerStat.Rushing) {
+				rushYdsAllowed += isNaN(parseFloat(playerStat.Rushing.rushYds)) ? 0 : parseFloat(playerStat.Rushing.rushYds);
+				rushTDsAllowed += isNaN(parseFloat(playerStat.Rushing.rushTD)) ? 0 : parseFloat(playerStat.Rushing.rushTD);
+			}
+			if (playerStat.Kicking) {
+				fgAllowed += isNaN(parseFloat(playerStat.Kicking.fgMade)) ? 0 : parseFloat(playerStat.Kicking.fgMade);
+				xpAllowed += isNaN(parseFloat(playerStat.Kicking.xpMade)) ? 0 : parseFloat(playerStat.Kicking.xpMade);
+			}
+		}
+	});
+
+	defenseStats.rushYdsAllowed = rushYdsAllowed.toString();
+	defenseStats.passYdsAllowed = passYdsAllowed.toString();
+	defenseStats.rushTDsAllowed = rushTDsAllowed.toString();
+	defenseStats.passTDsAllowed = passTDsAllowed.toString();
+	defenseStats.fgAllowed = fgAllowed.toString();
+	defenseStats.xpAllowed = xpAllowed.toString();
+
+	return defenseStats;
+}

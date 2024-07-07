@@ -1,5 +1,7 @@
 import * as fs from "node:fs";
 import {
+	NFLGameModel,
+	MatchupSleeperModel,
 	NFLTeamModel,
 	NFLTeamNames,
 	NFLTeamNamesArray,
@@ -8,6 +10,10 @@ import {
 	PlayerSleeperModel,
 	PositionNames,
 	PositionNamesArray,
+	RosterSleeperModel,
+	SeasonSleeperModel,
+	UserModel,
+	UserSleeperModel,
 } from "@tensingn/jj-bott-models";
 import {
 	DataAPIService,
@@ -53,6 +59,10 @@ export class Extractor {
 		return { nflTeams, schedules };
 	}
 
+	async getTankPlayer(tankID: string) {
+		return this.tankService.getPlayerInformation(tankID, true);
+	}
+
 	async getAllPlayers(
 		positions: Array<PositionNames>,
 		getStats: boolean = false
@@ -81,6 +91,7 @@ export class Extractor {
 				};
 
 				try {
+					player.tankPlayer = await this.tankService.getPlayerInformation(sp.espn_id, getStats);
 					player.tankPlayer = await this.tankService.getPlayerInformation(sp.espn_id, getStats);
 				} catch (err) {
 					console.log(err);
@@ -126,6 +137,11 @@ export class Extractor {
 		});
 	}
 
+	async getSinglePlayerModel(playerID: string): Promise<PlayerModel> {
+		await this.dataAPI.init();
+		return this.dataAPI.findOne<PlayerModel>("players", playerID);
+	}
+
 	getGame(gameID: string, includeFantasyPoints: boolean = false) {
 		return this.tankService.getNFLBoxScore({
 			gameID,
@@ -136,7 +152,7 @@ export class Extractor {
 	async searchPlayerGameModels(
 		nflTeams: Array<NFLTeamNames>,
 		playerIDs: Array<string>,
-		seasons: Array<string> = []
+		seasons: Array<string>
 	): Promise<Array<PlayerGameModel>> {
 		await this.dataAPI.init();
 		return this.dataAPI.performAction("players", null, "playerGames", "search", {
@@ -151,19 +167,23 @@ export class Extractor {
 		return this.dataAPI.findMany("nflTeams", undefined, 32);
 	}
 
-	async getAllPlayerGameModels(includeDefenses: boolean = true): Promise<Array<PlayerGameModel>> {
-		const playerGameModelsPromises = new Array<Promise<Array<PlayerGameModel>>>();
-		if (includeDefenses) {
-			playerGameModelsPromises.push(this.searchPlayerGameModels([...NFLTeamNamesArray], []));
-		}
-
+	async getAllPlayerGameModels(
+		seasons: Array<string>,
+		includeDefenses: boolean = true
+	): Promise<Array<PlayerGameModel>> {
 		const playerModels = await this.getAllPlayerModels(1000, ["QB", "RB", "FB", "WR", "TE", "K"]);
+
+		const playerGameModelsPromises = includeDefenses
+			? [this.searchPlayerGameModels([...NFLTeamNamesArray], [], seasons)]
+			: new Array<Promise<Array<PlayerGameModel>>>();
+
 		const chunkSize = 100;
 		for (let i = 0; i < playerModels.length; i += chunkSize) {
 			playerGameModelsPromises.push(
 				this.searchPlayerGameModels(
 					[],
-					playerModels.slice(i, i + chunkSize).map((player) => player.id)
+					playerModels.slice(i, i + chunkSize).map((player) => player.id),
+					seasons
 				)
 			);
 		}
@@ -178,9 +198,7 @@ export class Extractor {
 		return JSON.parse(data) as T;
 	}
 
-	getWeeklyNFLSchedule(
-		options: WeeklyNFLScheduleOptions
-	): Promise<Array<GameTankModel>> {
+	getWeeklyNFLSchedule(options: WeeklyNFLScheduleOptions): Promise<Array<GameTankModel>> {
 		return this.tankService.getWeeklyNFLSchedule(options);
 	}
 
@@ -201,14 +219,23 @@ export class Extractor {
 		return games2022.concat(games2023);
 	}
 
-	async getAllGamesByGameID(
-		games: Array<GameTankModel>
-	): Promise<Array<GameTankModel>> {
-		const allTankGames = await Promise.all(
-			games.map((game) => this.getGame(game.gameID, true))
-		);
+	getNFLGamesBySeason(season: number): Promise<Array<GameTankModel>> {
+		return this.getWeeklyNFLSchedule({
+			season: season,
+			seasonType: "reg",
+			week: "all",
+		});
+	}
+
+	async getAllGamesByGameID(games: Array<GameTankModel>): Promise<Array<GameTankModel>> {
+		const allTankGames = await Promise.all(games.map((game) => this.getGame(game.gameID, true)));
 
 		return allTankGames;
+	}
+
+	async getAllGameModels(): Promise<Array<NFLGameModel>> {
+		await this.dataAPI.init();
+		return this.dataAPI.findMany("nflGames", undefined, 1000000);
 	}
 
 	private async getAllNFLTeams(): Promise<Array<NFLTeamTankModel>> {
@@ -239,5 +266,58 @@ export class Extractor {
 		}
 
 		return schedulesThisYear;
+	}
+
+	async getAllSeasons(): Promise<Array<SeasonSleeperModel>> {
+		const seasons = new Array<SeasonSleeperModel>();
+		let tempSeason: SeasonSleeperModel;
+		let tempSeasonID = "992215050884292608";
+
+		do {
+			tempSeason = await this.sleeperService.getSeason(tempSeasonID);
+			seasons.push(tempSeason);
+			tempSeasonID = tempSeason.previous_league_id;
+		} while (tempSeason.previous_league_id);
+
+		return seasons;
+	}
+
+	async getAllRostersForSeasons(
+		seasons: Array<SeasonSleeperModel>
+	): Promise<Map<SeasonSleeperModel, Array<RosterSleeperModel>>> {
+		const map = new Map<SeasonSleeperModel, Array<RosterSleeperModel>>();
+
+		for (let i = 0; i < seasons.length; i++) {
+			map.set(seasons[i], await this.sleeperService.getAllRostersForSeason(seasons[i].league_id));
+		}
+
+		return map;
+	}
+
+	async getAllMatchupsForSeasons(
+		seasons: Array<SeasonSleeperModel>
+	): Promise<Map<SeasonSleeperModel, Map<string, Array<MatchupSleeperModel>>>> {
+		const map = new Map<SeasonSleeperModel, Map<string, Array<MatchupSleeperModel>>>();
+
+		for (let i = 0; i < seasons.length; i++) {
+			const weeksMap = new Map<string, Array<MatchupSleeperModel>>();
+
+			for (let j = 1; j < 18; j++) {
+				weeksMap.set(j.toString(), await this.sleeperService.getAllMatchupsForWeek(seasons[i].league_id, j.toString()));
+			}
+
+			map.set(seasons[i], weeksMap);
+		}
+
+		return map;
+	}
+
+	getAllUsers(seasonID: string): Promise<Array<UserSleeperModel>> {
+		return this.sleeperService.getAllUsersForSeason(seasonID);
+	}
+
+	async getAllUserModels(): Promise<Array<UserModel>> {
+		await this.dataAPI.init();
+		return this.dataAPI.findMany("users", undefined, 10);
 	}
 }

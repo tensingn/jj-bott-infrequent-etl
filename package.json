@@ -26,8 +26,8 @@
 	"dependencies": {
 		"@google-cloud/firestore": "^7.6.0",
 		"@tensingn/firebary": "^0.0.4",
-		"@tensingn/jj-bott-services": "^0.0.30",
-		"@tensingn/jj-bott-models": "^0.0.24",
+		"@tensingn/jj-bott-services": "^0.0.36",
+		"@tensingn/jj-bott-models": "^0.0.32",
 		"axios": "^1.6.8",
 		"dotenv": "^16.4.5"
 	}
